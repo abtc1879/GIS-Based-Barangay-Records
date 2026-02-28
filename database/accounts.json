@@ -1,0 +1,14 @@
+[
+  {
+    "barangayName": "San Joaquin",
+    "email": "admin@gis.com",
+    "password": "admin123",
+    "address": "Pinned location near 12.16775, 124.430517",
+    "mapPoint": {
+      "latitude": 12.170938,
+      "longitude": 124.427532,
+      "zoom": 19
+    },
+    "createdAt": "2026-02-24T06:41:19.745Z"
+  }
+]

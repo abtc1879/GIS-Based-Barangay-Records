@@ -1,0 +1,5360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GIS Base Barangay Records | Residents Overview</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    :root {
+      --bg: #e8ecfa;
+      --surface: #ffffff;
+      --accent: #3e8ef0;
+      --accent-alt: #56b7ff;
+      --text: #1f2340;
+      --muted: #6d7496;
+      --line: #e2e7f8;
+      --dashboard-shell-side-inset: 1cm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(145deg, #f8f9ff 0%, #edf0fb 60%, var(--bg) 100%);
+      color: var(--text);
+      text-transform: uppercase;
+    }
+
+    body.dark-mode {
+      color-scheme: dark;
+      --bg: #0d1419;
+      --surface: #152028;
+      --text: #e3edf1;
+      --muted: #a2b4bd;
+      --line: #2e3d47;
+      background: linear-gradient(145deg, #0b1216 0%, #18242b 100%);
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      text-transform: uppercase;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    .admin-email {
+      text-transform: none;
+    }
+
+    .wrap {
+      width: min(calc(1080px + 1cm), 94vw);
+      margin: 30px auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .topbar {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .title-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .barangay-photo {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      object-fit: cover;
+      background: #f7ecf5;
+      flex: 0 0 auto;
+    }
+
+    .topbar-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .admin-email {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 11px;
+      background: #fff4fa;
+      color: #5f3a65;
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .side-admin-trigger {
+      width: 100%;
+      max-width: none;
+      text-align: left;
+    }
+
+    .side-settings {
+      display: grid;
+      gap: 6px;
+    }
+
+    .settings-theme-menu {
+      display: grid;
+      gap: 6px;
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .settings-theme-select {
+      width: 100%;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .settings-theme-select:focus {
+      outline: 0;
+    }
+
+    .admin-email:hover {
+      background: #ffeaf5;
+    }
+
+    .admin-email:focus-visible {
+      outline: 2px solid #9bc8f5;
+      outline-offset: 2px;
+    }
+
+    .db-btn {
+      border: 1px dashed #9bc8f5;
+      border-radius: 10px;
+      background: #eaf5ff;
+      color: #356ca8;
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 9px 11px;
+      cursor: pointer;
+    }
+
+    .db-btn:hover {
+      background: #dff1ff;
+    }
+
+    .logout {
+      border: 0;
+      border-radius: 10px;
+      background: linear-gradient(120deg, var(--accent), var(--accent-alt));
+      color: #fff;
+      padding: 10px 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .grid > .card {
+      height: calc(90px - 0.5cm);
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .metric {
+      margin: 0;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .module-panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 14px 14px 0;
+      border-bottom: 1px solid var(--line);
+      background: #fff2f9;
+    }
+
+    .tab-btn {
+      border: 1px solid var(--line);
+      border-bottom: 0;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+      background: #fdeaf4;
+      color: #624667;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: var(--surface);
+      color: var(--accent);
+      border-color: var(--line);
+      position: relative;
+      top: 1px;
+    }
+
+    .tab-content {
+      padding: 16px;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .list-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .residents-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1080px;
+    }
+
+    .residents-table th,
+    .residents-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5eeeb;
+      text-align: left;
+      font-size: 0.87rem;
+    }
+
+    .residents-table th {
+      background: #fcecf7;
+      color: #5f4164;
+      font-weight: 700;
+    }
+
+    .residents-table tbody td {
+      font-weight: 700;
+    }
+
+    .residents-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .residents-table tbody tr {
+      cursor: pointer;
+      transition: background-color 120ms ease;
+    }
+
+    .residents-table tbody tr:hover {
+      background: #fff0f8;
+    }
+
+    .empty-text {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .home-search {
+      position: relative;
+      max-width: 420px;
+      margin: 10px 0 12px;
+    }
+
+    .home-search #residentSearchInput {
+      padding-left: 34px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none'%3E%3Ccircle cx='11' cy='11' r='7' stroke='%23879bbb' stroke-width='2'/%3E%3Cpath d='M20 20L16.65 16.65' stroke='%23879bbb' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 11px center;
+      background-size: 14px 14px;
+    }
+
+    .form-status {
+      margin: 10px 0 0;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--accent);
+      min-height: 1rem;
+    }
+
+    .form-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .org-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .org-actions .form-status {
+      margin: 0;
+      min-height: 0;
+    }
+
+    .org-chart {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .org-chart-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .org-chart-level {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .org-chart-subtitle {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .org-chart-council-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .org-chart-node {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #f8fbff;
+      padding: 8px;
+      text-align: center;
+      min-width: 170px;
+    }
+
+    .org-chart-node-role {
+      display: block;
+      font-size: 0.67rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .org-chart-node-name {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--text);
+      text-transform: uppercase;
+      word-break: break-word;
+    }
+
+    .org-chart-node-photo {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid var(--line);
+      margin: 0 auto 6px;
+      display: block;
+      background: #eef3fb;
+    }
+
+    .org-council-members {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 2px;
+    }
+
+    .org-council-member {
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+      background: #fcfeff;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .field-hint {
+      margin: 0;
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 11px;
+      font: inherit;
+      background: #fff;
+    }
+
+    .field textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .col-span-2 {
+      grid-column: span 2;
+    }
+
+    .primary {
+      border: 0;
+      border-radius: 10px;
+      background: linear-gradient(120deg, var(--accent), var(--accent-alt));
+      color: #fff;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .secondary {
+      border: 1px solid #b8d8f5;
+      border-radius: 10px;
+      background: #eaf5ff;
+      color: #3d74ad;
+      padding: 10px 12px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .report-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: #fff7fc;
+    }
+
+    .report-card h4 {
+      margin: 0 0 6px;
+      color: #5e3f64;
+      font-size: 0.95rem;
+    }
+
+    .report-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.87rem;
+      line-height: 1.45;
+    }
+
+    .chart-canvas {
+      width: 100%;
+      height: 220px;
+      display: block;
+      border-radius: 8px;
+      background: #ffffff;
+      margin-top: 8px;
+    }
+
+    .chart-legend {
+      list-style: none;
+      margin: 10px 0 0;
+      padding: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .chart-legend-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: #5f6078;
+    }
+
+    .chart-label-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .chart-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .chart-label-text {
+      color: #4f5574;
+    }
+
+    .chart-value-text {
+      color: #424a6a;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .map-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 30, 27, 0.45);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 160ms ease, visibility 160ms ease;
+      z-index: 20;
+    }
+
+    .map-overlay.open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .account-map-overlay {
+      z-index: 24;
+    }
+
+    .map-modal {
+      width: min(100%, 860px);
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 16px 38px rgba(10, 33, 29, 0.25);
+    }
+
+    .map-modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: #fff0f8;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .map-modal-title {
+      margin: 0;
+      font-size: 0.96rem;
+      color: #5d3f63;
+    }
+
+    .map-modal-body {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .resident-map {
+      height: 380px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      background: #ece6ef;
+    }
+
+    .gis-map-view {
+      height: 460px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      background: #ece6ef;
+      margin-top: 10px;
+    }
+
+    .map-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      color: #61667f;
+      font-size: 0.84rem;
+    }
+
+    .map-manual-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      align-items: end;
+    }
+
+    .map-manual-action {
+      grid-column: span 2;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .map-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .text-btn {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: #5f5a76;
+      padding: 9px 12px;
+      font: inherit;
+      font-size: 0.86rem;
+      cursor: pointer;
+    }
+
+    .detail-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 30, 27, 0.45);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 160ms ease, visibility 160ms ease;
+      z-index: 21;
+    }
+
+    .detail-overlay.open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .detail-modal {
+      width: min(100%, 920px);
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 16px 38px rgba(10, 33, 29, 0.25);
+    }
+
+    .detail-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: #fff0f8;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .detail-title {
+      margin: 0;
+      font-size: 0.96rem;
+      color: #5d3f63;
+    }
+
+    .detail-body {
+      padding: 12px;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .detail-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fbfdfc;
+      padding: 12px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 12px;
+    }
+
+    .detail-item {
+      display: grid;
+      gap: 3px;
+    }
+
+    .detail-item.full {
+      grid-column: span 2;
+    }
+
+    .detail-label {
+      font-size: 0.74rem;
+      color: #68718b;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .detail-value {
+      font-size: 0.9rem;
+      color: #2b3550;
+      line-height: 1.45;
+      word-break: break-word;
+      text-transform: uppercase;
+    }
+
+    #detailFamilyMemberName {
+      white-space: pre-line;
+    }
+
+    .detail-map {
+      height: 300px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      background: #ece6ef;
+    }
+
+    .resident-map .leaflet-control-attribution,
+    .detail-map .leaflet-control-attribution,
+    .gis-map-view .leaflet-control-attribution {
+      font-size: 0.65rem;
+    }
+
+    .detail-foot {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 0 12px 12px;
+    }
+
+    .account-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 30, 27, 0.45);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 160ms ease, visibility 160ms ease;
+      z-index: 22;
+    }
+
+    .account-overlay.open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .account-modal {
+      width: min(100%, 560px);
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 16px 38px rgba(10, 33, 29, 0.25);
+    }
+
+    .account-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: #fff0f8;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .account-title {
+      margin: 0;
+      font-size: 0.96rem;
+      color: #5d3f63;
+    }
+
+    .account-body {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .account-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding-top: 2px;
+    }
+
+    .photo-upload-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .photo-file-input {
+      display: none;
+    }
+
+    .photo-upload-button {
+      border: 1px solid #b8d8f5;
+      border-radius: 10px;
+      background: #eaf5ff;
+      color: #3d74ad;
+      padding: 10px 12px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .photo-upload-note {
+      margin: 0;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    body.dark-mode .topbar,
+    body.dark-mode .card,
+    body.dark-mode .module-panel {
+      background: var(--surface);
+      border-color: var(--line);
+    }
+
+    body.dark-mode .barangay-photo {
+      background: #1f2a32;
+    }
+
+    body.dark-mode .admin-email {
+      background: #1c2932;
+      color: #d7e5eb;
+      border-color: var(--line);
+    }
+
+    body.dark-mode .admin-email:focus-visible {
+      outline: 2px solid #9fcdf7;
+      outline-offset: 2px;
+    }
+
+    body.dark-mode .admin-email:hover {
+      background: #22313a;
+    }
+
+    body.dark-mode .tabs {
+      background: #111920;
+      border-bottom-color: var(--line);
+    }
+
+    body.dark-mode .tab-btn {
+      background: #1b2730;
+      color: #c9dae1;
+      border-color: var(--line);
+    }
+
+    body.dark-mode .tab-btn.active {
+      background: var(--surface);
+      color: var(--accent);
+    }
+
+    body.dark-mode .list-wrap,
+    body.dark-mode .field input,
+    body.dark-mode .field select,
+    body.dark-mode .field textarea {
+      background: #18242c;
+      color: var(--text);
+      border-color: var(--line);
+    }
+
+    body.dark-mode .field input::placeholder,
+    body.dark-mode .field textarea::placeholder {
+      color: #8fa6b0;
+    }
+
+    body.dark-mode .home-search #residentSearchInput {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none'%3E%3Ccircle cx='11' cy='11' r='7' stroke='%239fb4bf' stroke-width='2'/%3E%3Cpath d='M20 20L16.65 16.65' stroke='%239fb4bf' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+    }
+
+    body.dark-mode .residents-table th,
+    body.dark-mode .residents-table td {
+      border-bottom-color: #2a3942;
+    }
+
+    body.dark-mode .residents-table th {
+      background: #1c2932;
+      color: #d0e0e7;
+    }
+
+    body.dark-mode .residents-table tbody tr:hover {
+      background: #1b2730;
+    }
+
+    body.dark-mode .secondary,
+    body.dark-mode .photo-upload-button {
+      border-color: #5aa2ef;
+      background: #21354a;
+      color: #a8d7ff;
+    }
+
+    body.dark-mode .report-card {
+      background: #1a2630;
+    }
+
+    body.dark-mode .org-chart {
+      border-color: var(--line);
+      background: #18232c;
+    }
+
+    body.dark-mode .org-chart-node {
+      border-color: var(--line);
+      background: #202d37;
+    }
+
+    body.dark-mode .org-council-member {
+      border-color: #334551;
+      background: #1b2832;
+    }
+
+    body.dark-mode .report-card h4,
+    body.dark-mode .chart-legend-item,
+    body.dark-mode .chart-label-text,
+    body.dark-mode .chart-value-text {
+      color: #cfe0e6;
+    }
+
+    body.dark-mode .chart-canvas {
+      background: #121b23;
+    }
+
+    body.dark-mode .map-modal,
+    body.dark-mode .detail-modal,
+    body.dark-mode .account-modal {
+      background: var(--surface);
+      border-color: var(--line);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.45);
+    }
+
+    body.dark-mode .map-modal-head,
+    body.dark-mode .detail-head,
+    body.dark-mode .account-head {
+      background: #1a2730;
+      border-bottom-color: var(--line);
+    }
+
+    body.dark-mode .map-modal-title,
+    body.dark-mode .detail-title,
+    body.dark-mode .account-title,
+    body.dark-mode .map-meta,
+    body.dark-mode .text-btn {
+      color: #cbdee6;
+    }
+
+    body.dark-mode .text-btn {
+      background: #1a2730;
+      border-color: var(--line);
+    }
+
+    body.dark-mode .detail-card {
+      background: #18232b;
+      border-color: var(--line);
+    }
+
+    body.dark-mode .detail-label {
+      color: #9fb4bf;
+    }
+
+    body.dark-mode .detail-value {
+      color: #dbe8ed;
+    }
+
+    body.dark-mode .resident-map,
+    body.dark-mode .gis-map-view,
+    body.dark-mode .detail-map {
+      background: #1b2a32;
+      border-color: var(--line);
+    }
+
+    body.dark-mode .leaflet-tile-pane {
+      filter: brightness(0.78) contrast(0.92) saturate(0.85);
+    }
+
+    body.dark-mode .leaflet-bar a {
+      background: #1e2b33;
+      border-color: #33464f;
+      color: #d0e1e8;
+    }
+
+    body.dark-mode .leaflet-bar a:hover {
+      background: #253540;
+    }
+
+    body.dark-mode .leaflet-control-attribution {
+      background: rgba(18, 27, 33, 0.85);
+      color: #c0d4dd;
+    }
+
+    body.dark-mode .leaflet-control-attribution a {
+      color: #8ebbd0;
+    }
+
+    body:not(.dark-mode) {
+      background: #eff3fb;
+      color: #263354;
+      font-family: "Poppins", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      text-transform: none;
+    }
+
+    body:not(.dark-mode) input,
+    body:not(.dark-mode) select,
+    body:not(.dark-mode) textarea,
+    body:not(.dark-mode) button {
+      text-transform: none;
+    }
+
+    body.dark-mode .app-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 228px minmax(0, 1fr);
+      gap: 16px;
+      padding: 14px;
+      max-width: calc(1460px - (var(--dashboard-shell-side-inset) * 2));
+      margin: 0 auto;
+      align-items: start;
+    }
+
+    body.dark-mode .side-rail {
+      position: sticky;
+      top: 14px;
+      height: calc(100vh - 28px);
+      border-radius: 14px;
+      padding: 14px 10px;
+      background: #111b22;
+      border: 1px solid #24323d;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 14px;
+    }
+
+    body.dark-mode .side-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 4px 6px 10px;
+      border-bottom: 1px solid #2a3842;
+      color: #d9e6ee;
+      width: 100%;
+    }
+
+    body.dark-mode .side-logo-mark {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(130deg, #3e8ef0, #56b7ff);
+      color: #ffffff;
+    }
+
+    body.dark-mode .side-logo-mark svg {
+      width: 14px;
+      height: 14px;
+      fill: #ffffff;
+    }
+
+    body.dark-mode .side-brand .side-admin-trigger {
+      border-color: #334351;
+      background: #18242d;
+      color: #b8c9d4;
+      font-size: 0.72rem;
+      padding: 8px 9px;
+      border-radius: 8px;
+    }
+
+    body.dark-mode .side-nav {
+      display: grid;
+      gap: 5px;
+      align-content: start;
+    }
+
+    body.dark-mode .side-item {
+      border: 0;
+      border-radius: 8px;
+      text-align: left;
+      padding: 8px 10px;
+      background: transparent;
+      color: #95a8b7;
+      font: inherit;
+      font-size: 0.74rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    body.dark-mode .side-item.active {
+      background: linear-gradient(120deg, #3f77e3 0%, #2f62c8 100%);
+      color: #ffffff;
+      box-shadow: 0 9px 18px rgba(35, 67, 133, 0.32);
+    }
+
+    body.dark-mode .side-item:not([data-tab]) {
+      opacity: 0.78;
+      cursor: default;
+    }
+
+    body.dark-mode .side-note {
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 0;
+      width: 100%;
+      background: #1a2731;
+      color: #93a7b5;
+      font: inherit;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    body.dark-mode .side-note:hover {
+      background: #20313d;
+      color: #adc0ce;
+    }
+
+    body.dark-mode .settings-theme-menu {
+      background: #1a2731;
+      border: 1px solid #2f3f4b;
+    }
+
+    body.dark-mode .settings-theme-select {
+      background: #22313d;
+      border-color: #2f3f4b;
+      color: #c1d1dc;
+    }
+
+    body.dark-mode .settings-theme-select:focus {
+      border-color: #4b6ea3;
+      box-shadow: 0 0 0 2px rgba(63, 119, 227, 0.22);
+    }
+
+    body:not(.dark-mode) .app-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 228px minmax(0, 1fr);
+      gap: 16px;
+      padding: 14px;
+      max-width: calc(1460px - (var(--dashboard-shell-side-inset) * 2));
+      margin: 0 auto;
+      align-items: start;
+    }
+
+    body:not(.dark-mode) .side-rail {
+      position: sticky;
+      top: 14px;
+      height: calc(100vh - 28px);
+      border-radius: 14px;
+      padding: 14px 10px;
+      background: #f5f7fc;
+      border: 1px solid #e2e8f5;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 14px;
+    }
+
+    body:not(.dark-mode) .side-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 4px 6px 10px;
+      border-bottom: 1px solid #e3eaf7;
+      color: #25355a;
+      width: 100%;
+    }
+
+    body:not(.dark-mode) .side-logo-mark {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(130deg, #4f87ff, #3e7bee);
+      color: #ffffff;
+    }
+
+    body:not(.dark-mode) .side-logo-mark svg {
+      width: 14px;
+      height: 14px;
+      fill: #ffffff;
+    }
+
+    body:not(.dark-mode) .side-brand .side-admin-trigger {
+      border-color: #d9e4f5;
+      background: #f7f9fe;
+      color: #647798;
+      font-size: 0.72rem;
+      padding: 8px 9px;
+      border-radius: 8px;
+    }
+
+    body:not(.dark-mode) .side-nav {
+      display: grid;
+      gap: 5px;
+      align-content: start;
+    }
+
+    body:not(.dark-mode) .side-item {
+      border: 0;
+      border-radius: 8px;
+      text-align: left;
+      padding: 8px 10px;
+      background: transparent;
+      color: #667798;
+      font: inherit;
+      font-size: 0.74rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    body:not(.dark-mode) .side-item.active {
+      background: linear-gradient(120deg, #4f87ff 0%, #416de5 100%);
+      color: #ffffff;
+      box-shadow: 0 9px 18px rgba(58, 104, 199, 0.25);
+    }
+
+    body:not(.dark-mode) .side-item:not([data-tab]) {
+      opacity: 0.78;
+      cursor: default;
+    }
+
+    body:not(.dark-mode) .side-note {
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 0;
+      width: 100%;
+      background: #edf2fa;
+      color: #8392af;
+      font: inherit;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    body:not(.dark-mode) .side-note:hover {
+      background: #e5edf9;
+      color: #7484a3;
+    }
+
+    body:not(.dark-mode) .settings-theme-menu {
+      background: #f1f5fc;
+      border: 1px solid #dbe5f5;
+    }
+
+    body:not(.dark-mode) .settings-theme-select {
+      background: #f8fbff;
+      border-color: #dbe5f5;
+      color: #6d7fa0;
+    }
+
+    body:not(.dark-mode) .settings-theme-select:focus {
+      border-color: #8fb1ef;
+      box-shadow: 0 0 0 2px rgba(79, 135, 255, 0.2);
+    }
+
+    body:not(.dark-mode) .wrap {
+      width: auto;
+      margin: 0;
+      gap: 12px;
+    }
+
+    body:not(.dark-mode) .topbar,
+    body:not(.dark-mode) .module-panel {
+      border-radius: 12px;
+      border: 1px solid #e2e9f6;
+      background: #ffffff;
+      box-shadow: 0 10px 20px rgba(41, 66, 115, 0.06);
+    }
+
+    body:not(.dark-mode) .topbar {
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    body:not(.dark-mode) .title {
+      font-size: 1.04rem;
+      color: #273355;
+      text-transform: none;
+    }
+
+    body:not(.dark-mode) .title-wrap {
+      gap: 9px;
+    }
+
+    body:not(.dark-mode) .barangay-photo {
+      width: 34px;
+      height: 34px;
+      border-color: #dce5f4;
+      background: #edf2fb;
+    }
+
+    body:not(.dark-mode) .topbar-actions {
+      justify-self: end;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+
+    body:not(.dark-mode) .admin-email {
+      border-color: #e0e8f5;
+      background: #f7f9fe;
+      color: #6a7896;
+      font-size: 0.73rem;
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    body:not(.dark-mode) .admin-email {
+      max-width: 146px;
+    }
+
+    body:not(.dark-mode) .logout,
+    body:not(.dark-mode) .primary {
+      background: linear-gradient(130deg, #4f88ff 0%, #3f73eb 100%);
+      border-radius: 8px;
+      color: #ffffff;
+      box-shadow: 0 8px 16px rgba(52, 92, 182, 0.24);
+    }
+
+    body:not(.dark-mode) .logout {
+      padding: 9px 10px;
+      font-size: 0.78rem;
+    }
+
+    body:not(.dark-mode) .grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    body:not(.dark-mode) .card {
+      border-radius: 10px;
+      border: 0;
+      background: linear-gradient(130deg, #4f88ff 0%, #3f73eb 100%);
+      box-shadow: 0 10px 22px rgba(56, 95, 184, 0.24);
+      padding: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    body:not(.dark-mode) .grid .card:nth-child(1) {
+      background: linear-gradient(130deg, #4f88ff 0%, #3f73eb 100%);
+    }
+
+    body:not(.dark-mode) .grid .card:nth-child(2) {
+      background: linear-gradient(130deg, #00b894 0%, #00a38a 100%);
+    }
+
+    body:not(.dark-mode) .grid .card:nth-child(3) {
+      background: linear-gradient(130deg, #ff8b5e 0%, #f76b6a 100%);
+    }
+
+    body:not(.dark-mode) .card::after {
+      content: "";
+      position: absolute;
+      right: 11px;
+      top: 11px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.28);
+      box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.12);
+    }
+
+    body:not(.dark-mode) .card h3 {
+      margin: 0 0 7px;
+      font-size: 0.68rem;
+      color: rgba(255, 255, 255, 0.86);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    body:not(.dark-mode) .metric {
+      margin: 0;
+      color: #ffffff;
+      font-size: 1.36rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      text-shadow: 0 1px 2px rgba(20, 36, 72, 0.18);
+    }
+
+    body:not(.dark-mode) .tabs {
+      padding: 10px 12px 0;
+      border-bottom: 1px solid #e8edf8;
+      background: #ffffff;
+      justify-content: flex-start;
+      gap: 6px;
+    }
+
+    body:not(.dark-mode) .tab-btn {
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #8c9ab4;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    body:not(.dark-mode) .tab-btn.active {
+      background: #eaf1ff;
+      color: #3f73eb;
+      top: 0;
+    }
+
+    body:not(.dark-mode) .tab-content {
+      padding: 12px;
+    }
+
+    body:not(.dark-mode) .tab-panel h3 {
+      margin: 0 0 3px;
+      font-size: 0.96rem;
+      color: #2d3a5f;
+      text-transform: none;
+    }
+
+    body:not(.dark-mode) .tab-panel p {
+      margin-top: 0;
+      color: #7b88a4;
+      font-size: 0.8rem;
+      text-transform: none;
+    }
+
+    body:not(.dark-mode) .home-search {
+      max-width: 380px;
+      margin: 8px 0 10px;
+    }
+
+    body:not(.dark-mode) .list-wrap {
+      border: 1px solid #e8eef8;
+      border-radius: 10px;
+      background: #ffffff;
+    }
+
+    body:not(.dark-mode) .residents-table th,
+    body:not(.dark-mode) .residents-table td {
+      border-bottom-color: #edf2fb;
+      text-transform: uppercase;
+    }
+
+    body:not(.dark-mode) .residents-table th {
+      background: #f7f9fe;
+      color: #7081a1;
+      font-size: 0.74rem;
+      letter-spacing: 0.03em;
+    }
+
+    body:not(.dark-mode) .residents-table tbody td {
+      color: #2d3b5d;
+      font-weight: 700;
+    }
+
+    body:not(.dark-mode) .residents-table tbody tr:hover {
+      background: #f6faff;
+    }
+
+    body:not(.dark-mode) .field label,
+    body:not(.dark-mode) .field-hint,
+    body:not(.dark-mode) .empty-text,
+    body:not(.dark-mode) .map-meta,
+    body:not(.dark-mode) .photo-upload-note,
+    body:not(.dark-mode) .form-status {
+      color: #8090ae;
+      text-transform: uppercase;
+    }
+
+    body:not(.dark-mode) .field input,
+    body:not(.dark-mode) .field select,
+    body:not(.dark-mode) .field textarea,
+    body:not(.dark-mode) .text-btn,
+    body:not(.dark-mode) .secondary,
+    body:not(.dark-mode) .photo-upload-button {
+      border-color: #dce6f5;
+      background: #fbfdff;
+      color: #516284;
+      border-radius: 8px;
+      text-transform: uppercase;
+    }
+
+    body:not(.dark-mode) .field input:focus,
+    body:not(.dark-mode) .field select:focus,
+    body:not(.dark-mode) .field textarea:focus,
+    body:not(.dark-mode) .text-btn:focus,
+    body:not(.dark-mode) .secondary:focus {
+      outline: 0;
+      box-shadow: 0 0 0 3px rgba(79, 136, 255, 0.2);
+      border-color: #9ec2f3;
+    }
+
+    body:not(.dark-mode) .secondary,
+    body:not(.dark-mode) .photo-upload-button,
+    body:not(.dark-mode) .text-btn {
+      background: #f7f9fe;
+      color: #627595;
+    }
+
+    body:not(.dark-mode) .report-card,
+    body:not(.dark-mode) .detail-card {
+      border-color: #e7edf8;
+      background: #ffffff;
+      border-radius: 10px;
+    }
+
+    body:not(.dark-mode) .chart-canvas {
+      background: #f9fcff;
+      border: 1px solid #edf3fd;
+    }
+
+    body:not(.dark-mode) .chart-label-text,
+    body:not(.dark-mode) .chart-value-text,
+    body:not(.dark-mode) .report-card h4,
+    body:not(.dark-mode) .detail-value,
+    body:not(.dark-mode) .detail-title,
+    body:not(.dark-mode) .account-title,
+    body:not(.dark-mode) .map-modal-title {
+      color: #2f3e61;
+    }
+
+    body:not(.dark-mode) .detail-label {
+      color: #8391ac;
+    }
+
+    body:not(.dark-mode) .map-modal,
+    body:not(.dark-mode) .detail-modal,
+    body:not(.dark-mode) .account-modal {
+      border-color: #dfe8f8;
+      border-radius: 12px;
+      box-shadow: 0 18px 34px rgba(45, 78, 131, 0.22);
+    }
+
+    body:not(.dark-mode) .map-modal-head,
+    body:not(.dark-mode) .detail-head,
+    body:not(.dark-mode) .account-head {
+      background: #f6f9fe;
+      border-bottom-color: #e7edf8;
+    }
+
+    body:not(.dark-mode) .resident-map,
+    body:not(.dark-mode) .gis-map-view,
+    body:not(.dark-mode) .detail-map {
+      border-color: #dce6f5;
+      background: #ebf1fb;
+    }
+
+    @media (max-width: 1100px) {
+      body:not(.dark-mode) .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      body:not(.dark-mode) .side-rail {
+        position: static;
+        height: auto;
+      }
+
+      body:not(.dark-mode) .side-nav {
+        grid-template-columns: repeat(5, minmax(120px, 1fr));
+        overflow-x: auto;
+      }
+
+      body:not(.dark-mode) .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      body:not(.dark-mode) .topbar-actions {
+        justify-self: start;
+      }
+    }
+
+    @media (max-width: 840px) {
+      .topbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .topbar-actions {
+        justify-content: flex-start;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid,
+      .report-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .org-chart-council-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .org-council-members {
+        grid-template-columns: 1fr;
+      }
+
+      .col-span-2 {
+        grid-column: span 1;
+      }
+
+      .detail-body {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+  <aside class="side-rail" aria-label="Primary Navigation">
+    <div class="side-brand">
+      <span class="side-logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" role="img" aria-label="User">
+          <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.97 0-9 2.24-9 5v1h18v-1c0-2.76-4.03-5-9-5Z"/>
+        </svg>
+      </span>
+      <button class="admin-email side-admin-trigger" id="adminEmailDisplay" type="button">admin@barangay.gov.ph</button>
+    </div>
+    <nav class="side-nav">
+      <button class="side-item active" data-tab="home" type="button">Residents Overview</button>
+      <button class="side-item" data-tab="reports" type="button">Residents Chart</button>
+      <button class="side-item" data-tab="add-resident" type="button">Add Resident</button>
+      <button class="side-item" data-tab="gis-map" type="button">GIS Map Overview</button>
+      <button class="side-item" data-tab="issuance" type="button">Issuance</button>
+      <button class="side-item" data-tab="barangay-organization" type="button">Barangay Organizational Structure</button>
+      <button class="side-item" data-tab="hotline" type="button">Hotline</button>
+      <button class="side-item" data-tab="more" type="button">More</button>
+    </nav>
+    <div class="side-settings">
+      <button class="side-note" id="settingsButton" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="settingsThemeMenu">Settings</button>
+      <div class="settings-theme-menu" id="settingsThemeMenu" hidden>
+        <select class="settings-theme-select" id="settingsThemeSelect" aria-label="Theme">
+          <option value="system">System Theme</option>
+          <option value="dark">Dark Mode</option>
+        </select>
+      </div>
+    </div>
+  </aside>
+  <main class="wrap">
+    <header class="topbar">
+      <div class="title-wrap">
+        <img class="barangay-photo" id="barangayPhoto" alt="Barangay photo" />
+        <h1 class="title" id="dashboardTitle">Residents Overview</h1>
+      </div>
+      <div class="topbar-actions">
+        <button class="logout" id="logoutButton" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <h3>Total Residents</h3>
+        <p class="metric" id="totalResidentsMetric">0</p>
+      </article>
+      <article class="card">
+        <h3>Total Household</h3>
+        <p class="metric" id="totalHouseholdsMetric">0</p>
+      </article>
+      <article class="card">
+        <h3>Pending Updates</h3>
+        <p class="metric" id="pendingUpdatesMetric">0</p>
+      </article>
+    </section>
+
+    <section class="module-panel">
+      <div class="tab-content">
+        <section class="tab-panel active" id="home">
+          <h3>Residents Overview</h3>
+          <div class="field home-search">
+            <input id="residentSearchInput" type="search" placeholder="Search by surname, first name, middle name, or suffix" autocomplete="off" />
+          </div>
+          <div class="list-wrap">
+            <table class="residents-table">
+              <thead>
+                <tr>
+                  <th>Surname</th>
+                  <th>First Name</th>
+                  <th>Middle Name</th>
+                  <th>Suffix</th>
+                  <th>Gender</th>
+                  <th>Birth Date</th>
+                  <th>Age</th>
+                  <th>Contact</th>
+                  <th>Address</th>
+                </tr>
+              </thead>
+              <tbody id="residentTableBody"></tbody>
+            </table>
+          </div>
+          <p class="empty-text" id="residentEmptyText">No residents yet. Add one from the Add Resident tab.</p>
+        </section>
+
+        <section class="tab-panel" id="gis-map">
+          <h3>GIS Map</h3>
+          <p>Mapped resident locations overview.</p>
+          <div class="gis-map-view" id="gisOverviewMap"></div>
+          <p class="empty-text" id="gisMapEmptyText">No pinned resident locations to display.</p>
+        </section>
+
+        <section class="tab-panel" id="add-resident">
+          <h3>Add Resident</h3>
+          <p>Fill in resident information and save to records.</p>
+          <form id="residentForm" novalidate>
+            <div class="form-grid">
+              <div class="field">
+                <label for="residentSurname">Surname</label>
+                <input id="residentSurname" type="text" placeholder="Enter surname" />
+              </div>
+              <div class="field">
+                <label for="residentFirstName">First Name</label>
+                <input id="residentFirstName" type="text" placeholder="Enter first name" />
+              </div>
+              <div class="field">
+                <label for="residentMiddleName">Middle Name (Optional)</label>
+                <input id="residentMiddleName" type="text" placeholder="Enter middle name" />
+              </div>
+              <div class="field">
+                <label for="residentSuffix">Suffix (Optional)</label>
+                <input id="residentSuffix" type="text" placeholder="Jr., Sr., III" />
+              </div>
+              <div class="field">
+                <label for="residentGender">Gender</label>
+                <select id="residentGender">
+                  <option value="">Select gender</option>
+                  <option>Male</option>
+                  <option>Female</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="residentBirth">Birth Date</label>
+                <input id="residentBirth" type="date" />
+              </div>
+              <div class="field">
+                <label for="residentAge">Age</label>
+                <input id="residentAge" type="text" placeholder="Auto-calculated" readonly />
+              </div>
+              <div class="field">
+                <label for="residentCivilStatus">Civil Status</label>
+                <select id="residentCivilStatus">
+                  <option value="">Select civil status</option>
+                  <option value="Single">Single</option>
+                  <option value="Married">Married</option>
+                  <option value="Widowed">Widowed</option>
+                  <option value="Separated">Separated</option>
+                  <option value="Divorced">Divorced</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="residentAgeClassification">Age Classification</label>
+                <input id="residentAgeClassification" type="text" placeholder="Auto-calculated" readonly />
+              </div>
+              <div class="field">
+                <label for="residentContact">Contact</label>
+                <input id="residentContact" type="text" placeholder="09XXXXXXXXX" />
+              </div>
+              <div class="field">
+                <label for="residentNationality">Nationality</label>
+                <input id="residentNationality" type="text" placeholder="Enter nationality" />
+              </div>
+              <div class="field">
+                <label for="residentReligion">Religion (Optional)</label>
+                <input id="residentReligion" type="text" placeholder="Enter religion" />
+              </div>
+              <div class="field">
+                <label for="residentBeneficiary">Beneficiary</label>
+                <select id="residentBeneficiary">
+                  <option value="">Select beneficiary</option>
+                  <option>None</option>
+                  <option>Senior</option>
+                  <option>4Ps</option>
+                  <option>TUPAD</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="residentFamilyPosition">Family Position</label>
+                <select id="residentFamilyPosition">
+                  <option value="">Select family position</option>
+                  <option value="Family Leader">Family Leader</option>
+                  <option value="Family Member">Family Member</option>
+                </select>
+              </div>
+              <div class="field" id="residentFamilyLeaderField" hidden>
+                <label for="residentFamilyLeaderSearch">Search Family Leader</label>
+                <input
+                  id="residentFamilyLeaderSearch"
+                  type="search"
+                  list="residentFamilyLeaderOptions"
+                  placeholder="Search and select family leader"
+                  autocomplete="off"
+                  disabled
+                />
+                <datalist id="residentFamilyLeaderOptions"></datalist>
+                <p class="field-hint" id="residentFamilyLeaderHint"></p>
+              </div>
+              <div class="field" id="residentFamilyRelationshipField" hidden>
+                <label for="residentFamilyRelationship">Relationship to Family Leader</label>
+                <select id="residentFamilyRelationship" disabled>
+                  <option value="">Select relationship</option>
+                  <option value="Wife">Wife</option>
+                  <option value="Husband">Husband</option>
+                  <option value="Child">Child</option>
+                </select>
+              </div>
+              <div class="field col-span-2">
+                <label for="residentAddress">Address</label>
+                <textarea id="residentAddress" placeholder="Enter complete address"></textarea>
+              </div>
+              <div class="field col-span-2">
+                <label for="residentLocation">Location</label>
+                <textarea id="residentLocation" placeholder="Pin location from map" readonly></textarea>
+                <div>
+                  <button class="secondary" id="pinAddressButton" type="button">Open Map to Pin Location</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="primary" id="saveResidentButton" type="submit">Save Resident</button>
+              <button class="text-btn" id="cancelResidentEditButton" type="button" hidden>Cancel Edit</button>
+            </div>
+            <p class="form-status" id="residentFormStatus"></p>
+          </form>
+        </section>
+
+        <section class="tab-panel" id="reports">
+          <h3>Residents Chart</h3>
+          <div class="report-grid">
+            <article class="report-card">
+              <h4>Age Classification</h4>
+              <canvas class="chart-canvas" id="ageClassificationChart" width="300" height="220"></canvas>
+              <ul class="chart-legend" id="ageClassificationLegend"></ul>
+            </article>
+            <article class="report-card">
+              <h4>Beneficiary</h4>
+              <canvas class="chart-canvas" id="beneficiaryChart" width="300" height="220"></canvas>
+              <ul class="chart-legend" id="beneficiaryLegend"></ul>
+            </article>
+            <article class="report-card">
+              <h4>Civil Status</h4>
+              <canvas class="chart-canvas" id="civilStatusChart" width="300" height="220"></canvas>
+              <ul class="chart-legend" id="civilStatusLegend"></ul>
+            </article>
+            <article class="report-card">
+              <h4>Gender</h4>
+              <canvas class="chart-canvas" id="genderChart" width="300" height="220"></canvas>
+              <ul class="chart-legend" id="genderLegend"></ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="issuance">
+          <h3>Issuance</h3>
+          <p>Barangay document issuance records and requests.</p>
+        </section>
+
+        <section class="tab-panel" id="barangay-organization">
+          <h3>Barangay Organizational Structure</h3>
+          <p>Barangay officials, committees, and organization structure.</p>
+          <div class="form-grid" id="orgStructureFields">
+            <div class="field col-span-2">
+              <label for="orgPunongBarangay">Punong Barangay (Barangay Captain)</label>
+              <p class="field-hint">Chief executive officer who enforces laws and ordinances, and leads the barangay assembly.</p>
+              <input id="orgPunongBarangay" type="text" placeholder="Enter name" />
+              <div class="photo-upload-row">
+                <button class="photo-upload-button" type="button" id="orgPunongPhotoPickButton">Upload Photo</button>
+                <input class="photo-file-input" id="orgPunongPhotoInput" type="file" accept="image/*" />
+              </div>
+              <p class="photo-upload-note" id="orgPunongPhotoName">No photo selected.</p>
+            </div>
+            <div class="field col-span-2">
+              <label for="orgSangguniangBarangay1">Sangguniang Barangay (Barangay Council)</label>
+              <p class="field-hint">Legislative body composed of elected members who pass ordinances.</p>
+              <div class="org-council-members">
+                <div class="org-council-member">
+                  <input id="orgSangguniangBarangay1" type="text" placeholder="Council Member 1" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgCouncilPhotoPickButton1">Upload Photo</button>
+                    <input class="photo-file-input" id="orgCouncilPhotoInput1" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgCouncilPhotoName1">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSangguniangBarangay2" type="text" placeholder="Council Member 2" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgCouncilPhotoPickButton2">Upload Photo</button>
+                    <input class="photo-file-input" id="orgCouncilPhotoInput2" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgCouncilPhotoName2">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSangguniangBarangay3" type="text" placeholder="Council Member 3" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgCouncilPhotoPickButton3">Upload Photo</button>
+                    <input class="photo-file-input" id="orgCouncilPhotoInput3" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgCouncilPhotoName3">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSangguniangBarangay4" type="text" placeholder="Council Member 4" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgCouncilPhotoPickButton4">Upload Photo</button>
+                    <input class="photo-file-input" id="orgCouncilPhotoInput4" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgCouncilPhotoName4">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSangguniangBarangay5" type="text" placeholder="Council Member 5" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgCouncilPhotoPickButton5">Upload Photo</button>
+                    <input class="photo-file-input" id="orgCouncilPhotoInput5" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgCouncilPhotoName5">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSangguniangBarangay6" type="text" placeholder="Council Member 6" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgCouncilPhotoPickButton6">Upload Photo</button>
+                    <input class="photo-file-input" id="orgCouncilPhotoInput6" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgCouncilPhotoName6">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSangguniangBarangay7" type="text" placeholder="Council Member 7" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgCouncilPhotoPickButton7">Upload Photo</button>
+                    <input class="photo-file-input" id="orgCouncilPhotoInput7" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgCouncilPhotoName7">No photo selected.</p>
+                </div>
+              </div>
+            </div>
+            <div class="field col-span-2">
+              <label for="orgSkChairperson">Sangguniang Kabataan (SK) Chairperson</label>
+              <p class="field-hint">Represents the youth council.</p>
+              <input id="orgSkChairperson" type="text" placeholder="Enter name" />
+              <div class="photo-upload-row">
+                <button class="photo-upload-button" type="button" id="orgSkChairPhotoPickButton">Upload Photo</button>
+                <input class="photo-file-input" id="orgSkChairPhotoInput" type="file" accept="image/*" />
+              </div>
+              <p class="photo-upload-note" id="orgSkChairPhotoName">No photo selected.</p>
+              <p class="field-hint">Sangguniang Kabataan Members</p>
+              <div class="org-council-members">
+                <div class="org-council-member">
+                  <input id="orgSkMember1" type="text" placeholder="SK Member 1" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgSkMemberPhotoPickButton1">Upload Photo</button>
+                    <input class="photo-file-input" id="orgSkMemberPhotoInput1" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgSkMemberPhotoName1">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSkMember2" type="text" placeholder="SK Member 2" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgSkMemberPhotoPickButton2">Upload Photo</button>
+                    <input class="photo-file-input" id="orgSkMemberPhotoInput2" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgSkMemberPhotoName2">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSkMember3" type="text" placeholder="SK Member 3" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgSkMemberPhotoPickButton3">Upload Photo</button>
+                    <input class="photo-file-input" id="orgSkMemberPhotoInput3" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgSkMemberPhotoName3">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSkMember4" type="text" placeholder="SK Member 4" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgSkMemberPhotoPickButton4">Upload Photo</button>
+                    <input class="photo-file-input" id="orgSkMemberPhotoInput4" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgSkMemberPhotoName4">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSkMember5" type="text" placeholder="SK Member 5" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgSkMemberPhotoPickButton5">Upload Photo</button>
+                    <input class="photo-file-input" id="orgSkMemberPhotoInput5" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgSkMemberPhotoName5">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSkMember6" type="text" placeholder="SK Member 6" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgSkMemberPhotoPickButton6">Upload Photo</button>
+                    <input class="photo-file-input" id="orgSkMemberPhotoInput6" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgSkMemberPhotoName6">No photo selected.</p>
+                </div>
+                <div class="org-council-member">
+                  <input id="orgSkMember7" type="text" placeholder="SK Member 7" />
+                  <div class="photo-upload-row">
+                    <button class="photo-upload-button" type="button" id="orgSkMemberPhotoPickButton7">Upload Photo</button>
+                    <input class="photo-file-input" id="orgSkMemberPhotoInput7" type="file" accept="image/*" />
+                  </div>
+                  <p class="photo-upload-note" id="orgSkMemberPhotoName7">No photo selected.</p>
+                </div>
+              </div>
+            </div>
+            <div class="field col-span-2">
+              <label for="orgBarangaySecretary">Barangay Secretary</label>
+              <p class="field-hint">Appointed official managing records and meetings.</p>
+              <input id="orgBarangaySecretary" type="text" placeholder="Enter name" />
+              <div class="photo-upload-row">
+                <button class="photo-upload-button" type="button" id="orgSecretaryPhotoPickButton">Upload Photo</button>
+                <input class="photo-file-input" id="orgSecretaryPhotoInput" type="file" accept="image/*" />
+              </div>
+              <p class="photo-upload-note" id="orgSecretaryPhotoName">No photo selected.</p>
+            </div>
+            <div class="field col-span-2">
+              <label for="orgBarangayTreasurer">Barangay Treasurer</label>
+              <p class="field-hint">Appointed official managing finances.</p>
+              <input id="orgBarangayTreasurer" type="text" placeholder="Enter name" />
+              <div class="photo-upload-row">
+                <button class="photo-upload-button" type="button" id="orgTreasurerPhotoPickButton">Upload Photo</button>
+                <input class="photo-file-input" id="orgTreasurerPhotoInput" type="file" accept="image/*" />
+              </div>
+              <p class="photo-upload-note" id="orgTreasurerPhotoName">No photo selected.</p>
+            </div>
+          </div>
+          <div class="org-actions">
+            <button class="primary" id="orgConvertButton" type="button">Save and Convert to Organizational Chart</button>
+            <button class="text-btn" id="orgEditButton" type="button" hidden>Edit Organizational Structure</button>
+            <p class="form-status" id="orgStructureStatus"></p>
+          </div>
+          <div class="org-chart" id="orgChartOutput" hidden></div>
+        </section>
+
+        <section class="tab-panel" id="hotline">
+          <h3>Hotline</h3>
+          <p>Emergency and service hotline directory.</p>
+        </section>
+
+        <section class="tab-panel" id="more">
+          <h3>More</h3>
+          <p>Additional barangay tools and modules.</p>
+        </section>
+      </div>
+    </section>
+  </main>
+  </div>
+
+  <div class="map-overlay" id="residentMapOverlay" aria-hidden="true">
+    <section class="map-modal" role="dialog" aria-modal="true" aria-labelledby="residentMapTitle">
+      <header class="map-modal-head">
+        <h3 class="map-modal-title" id="residentMapTitle">Pin Resident Location</h3>
+        <button class="text-btn" type="button" id="residentMapCloseButton">Close</button>
+      </header>
+      <div class="map-modal-body">
+        <div class="resident-map" id="residentMap" tabindex="0"></div>
+        <div class="map-meta">
+          <span id="residentMapCoords">No location pinned yet.</span>
+          <button class="text-btn" type="button" id="residentMapResetButton">Reset Pin</button>
+        </div>
+        <div class="map-manual-grid">
+          <div class="field">
+            <label for="residentMapLatitude">Latitude</label>
+            <input id="residentMapLatitude" type="text" inputmode="decimal" placeholder="e.g. 14.599500" />
+          </div>
+          <div class="field">
+            <label for="residentMapLongitude">Longitude</label>
+            <input id="residentMapLongitude" type="text" inputmode="decimal" placeholder="e.g. 120.984200" />
+          </div>
+          <div class="map-manual-action">
+            <button class="text-btn" type="button" id="residentMapApplyCoordsButton">Set Coordinates</button>
+          </div>
+        </div>
+        <div class="map-actions">
+          <button class="text-btn" type="button" id="residentMapCancelButton">Cancel</button>
+          <button class="primary" type="button" id="residentMapUseButton">Use This Location</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="detail-overlay" id="residentDetailOverlay" aria-hidden="true">
+    <section class="detail-modal" role="dialog" aria-modal="true" aria-labelledby="residentDetailTitle">
+      <header class="detail-head">
+        <h3 class="detail-title" id="residentDetailTitle">Resident Information</h3>
+        <button class="text-btn" type="button" id="residentDetailCloseButton">Close</button>
+      </header>
+      <div class="detail-body">
+        <article class="detail-card">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Full Name</span>
+              <span class="detail-value" id="detailName">-</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Gender</span>
+              <span class="detail-value" id="detailGender">-</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Civil Status</span>
+              <span class="detail-value" id="detailCivilStatus">-</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Beneficiary</span>
+              <span class="detail-value" id="detailBeneficiary">-</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Birth Date</span>
+              <span class="detail-value" id="detailBirthDate">-</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Age</span>
+              <span class="detail-value" id="detailAge">-</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Age Classification</span>
+              <span class="detail-value" id="detailAgeClassification">-</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Contact</span>
+              <span class="detail-value" id="detailContact">-</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Nationality</span>
+              <span class="detail-value" id="detailNationality">-</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Religion</span>
+              <span class="detail-value" id="detailReligion">-</span>
+            </div>
+            <div class="detail-item full">
+              <span class="detail-label">Family Member Name</span>
+              <span class="detail-value" id="detailFamilyMemberName">-</span>
+            </div>
+            <div class="detail-item full">
+              <span class="detail-label">Address</span>
+              <span class="detail-value" id="detailAddress">-</span>
+            </div>
+            <div class="detail-item full">
+              <span class="detail-label">Location</span>
+              <span class="detail-value" id="detailLocation">-</span>
+            </div>
+          </div>
+        </article>
+        <article class="detail-card">
+          <div class="detail-map" id="residentDetailMap"></div>
+          <p class="empty-text" id="residentDetailCoords">No pinned location saved.</p>
+        </article>
+      </div>
+      <div class="detail-foot">
+        <button class="text-btn" type="button" id="residentDetailEditButton">Edit Resident</button>
+        <button class="primary" type="button" id="residentDetailDoneButton">Done</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="account-overlay" id="accountEditOverlay" aria-hidden="true">
+    <section class="account-modal" role="dialog" aria-modal="true" aria-labelledby="accountEditTitle">
+      <header class="account-head">
+        <h3 class="account-title" id="accountEditTitle">Edit Admin Account</h3>
+        <button class="text-btn" type="button" id="accountEditCloseButton">Close</button>
+      </header>
+      <form class="account-body" id="accountEditForm" novalidate>
+        <div class="field">
+          <label for="accountEditBarangay">Barangay Name</label>
+          <input id="accountEditBarangay" type="text" placeholder="Enter barangay name" />
+        </div>
+        <div class="field">
+          <label for="accountEditEmail">Email Address</label>
+          <input id="accountEditEmail" type="email" placeholder="admin@barangay.gov.ph" />
+        </div>
+        <div class="field">
+          <label for="accountEditPassword">Password</label>
+          <input id="accountEditPassword" type="password" placeholder="Leave blank to keep current password" />
+        </div>
+        <div class="field">
+          <label for="accountEditTheme">Theme</label>
+          <select id="accountEditTheme">
+            <option value="system">System Theme</option>
+            <option value="dark">Dark Theme</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="accountEditAddress">Address</label>
+          <textarea id="accountEditAddress" placeholder="Enter address"></textarea>
+          <div>
+            <button class="text-btn" type="button" id="accountEditMapButton">Open Map to Edit Address</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="accountEditPhotoInput">Photo</label>
+          <div class="photo-upload-row">
+            <button class="photo-upload-button" type="button" id="accountEditPhotoPickButton">Click to Upload Photo</button>
+            <button class="text-btn" type="button" id="accountEditPhotoClearButton">Clear</button>
+            <input class="photo-file-input" id="accountEditPhotoInput" type="file" accept="image/*" />
+          </div>
+          <p class="photo-upload-note" id="accountEditPhotoName">No photo selected.</p>
+        </div>
+        <p class="form-status" id="accountEditStatus"></p>
+        <div class="account-actions">
+          <button class="text-btn" type="button" id="accountEditCancelButton">Cancel</button>
+          <button class="primary" type="submit">Save Account</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div class="map-overlay account-map-overlay" id="accountMapOverlay" aria-hidden="true">
+    <section class="map-modal" role="dialog" aria-modal="true" aria-labelledby="accountMapTitle">
+      <header class="map-modal-head">
+        <h3 class="map-modal-title" id="accountMapTitle">Pin Admin Address Location</h3>
+        <button class="text-btn" type="button" id="accountMapCloseButton">Close</button>
+      </header>
+      <div class="map-modal-body">
+        <div class="resident-map" id="accountMap" tabindex="0"></div>
+        <div class="map-meta">
+          <span id="accountMapCoords">No location pinned yet.</span>
+          <button class="text-btn" type="button" id="accountMapResetButton">Reset Pin</button>
+        </div>
+        <div class="map-actions">
+          <button class="text-btn" type="button" id="accountMapCancelButton">Cancel</button>
+          <button class="primary" type="button" id="accountMapUseButton">Use This Location</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    const RESIDENTS_KEY = "gis_barangay_residents";
+    const ACCOUNTS_KEY = "gis_barangay_accounts";
+    const CURRENT_USER_KEY = "gis_current_user";
+    const THEME_PREFERENCE_KEY = "gis_dashboard_theme_preference";
+    const ORG_STRUCTURE_KEY = "gis_barangay_org_structure";
+    const DEFAULT_CENTER = [14.5686, 121.0331];
+    const DEFAULT_ZOOM = 15;
+    const DEFAULT_THEME_HUE = 160;
+    const USE_LOGO_BASED_THEME = false;
+    const residentForm = document.getElementById("residentForm");
+    const residentTableBody = document.getElementById("residentTableBody");
+    const residentEmptyText = document.getElementById("residentEmptyText");
+    const residentSearchInput = document.getElementById("residentSearchInput");
+    const gisOverviewMapElement = document.getElementById("gisOverviewMap");
+    const gisMapEmptyText = document.getElementById("gisMapEmptyText");
+    const ageClassificationChart = document.getElementById("ageClassificationChart");
+    const beneficiaryChart = document.getElementById("beneficiaryChart");
+    const civilStatusChart = document.getElementById("civilStatusChart");
+    const genderChart = document.getElementById("genderChart");
+    const ageClassificationLegend = document.getElementById("ageClassificationLegend");
+    const beneficiaryLegend = document.getElementById("beneficiaryLegend");
+    const civilStatusLegend = document.getElementById("civilStatusLegend");
+    const genderLegend = document.getElementById("genderLegend");
+    const residentFormStatus = document.getElementById("residentFormStatus");
+    const totalResidentsMetric = document.getElementById("totalResidentsMetric");
+    const totalHouseholdsMetric = document.getElementById("totalHouseholdsMetric");
+    const dashboardTitle = document.getElementById("dashboardTitle");
+    const barangayPhoto = document.getElementById("barangayPhoto");
+    const adminEmailDisplay = document.getElementById("adminEmailDisplay");
+    const settingsButton = document.getElementById("settingsButton");
+    const settingsThemeMenu = document.getElementById("settingsThemeMenu");
+    const settingsThemeSelect = document.getElementById("settingsThemeSelect");
+    const accountEditOverlay = document.getElementById("accountEditOverlay");
+    const accountEditForm = document.getElementById("accountEditForm");
+    const accountEditCloseButton = document.getElementById("accountEditCloseButton");
+    const accountEditCancelButton = document.getElementById("accountEditCancelButton");
+    const accountEditBarangayInput = document.getElementById("accountEditBarangay");
+    const accountEditEmailInput = document.getElementById("accountEditEmail");
+    const accountEditPasswordInput = document.getElementById("accountEditPassword");
+    const accountEditThemeInput = document.getElementById("accountEditTheme");
+    const accountEditAddressInput = document.getElementById("accountEditAddress");
+    const accountEditMapButton = document.getElementById("accountEditMapButton");
+    const accountEditPhotoInput = document.getElementById("accountEditPhotoInput");
+    const accountEditPhotoPickButton = document.getElementById("accountEditPhotoPickButton");
+    const accountEditPhotoClearButton = document.getElementById("accountEditPhotoClearButton");
+    const accountEditPhotoName = document.getElementById("accountEditPhotoName");
+    const accountEditStatus = document.getElementById("accountEditStatus");
+    const accountMapOverlay = document.getElementById("accountMapOverlay");
+    const accountMapElement = document.getElementById("accountMap");
+    const accountMapCloseButton = document.getElementById("accountMapCloseButton");
+    const accountMapCancelButton = document.getElementById("accountMapCancelButton");
+    const accountMapUseButton = document.getElementById("accountMapUseButton");
+    const accountMapResetButton = document.getElementById("accountMapResetButton");
+    const accountMapCoords = document.getElementById("accountMapCoords");
+    const saveResidentButton = document.getElementById("saveResidentButton");
+    const cancelResidentEditButton = document.getElementById("cancelResidentEditButton");
+    const residentSurnameInput = document.getElementById("residentSurname");
+    const residentFirstNameInput = document.getElementById("residentFirstName");
+    const residentMiddleNameInput = document.getElementById("residentMiddleName");
+    const residentSuffixInput = document.getElementById("residentSuffix");
+    const residentLocationInput = document.getElementById("residentLocation");
+    const residentBirthInput = document.getElementById("residentBirth");
+    const residentAgeInput = document.getElementById("residentAge");
+    const residentAgeClassificationInput = document.getElementById("residentAgeClassification");
+    const residentNationalityInput = document.getElementById("residentNationality");
+    const residentReligionInput = document.getElementById("residentReligion");
+    const residentFamilyPositionInput = document.getElementById("residentFamilyPosition");
+    const residentFamilyLeaderField = document.getElementById("residentFamilyLeaderField");
+    const residentFamilyLeaderSearchInput = document.getElementById("residentFamilyLeaderSearch");
+    const residentFamilyLeaderOptions = document.getElementById("residentFamilyLeaderOptions");
+    const residentFamilyLeaderHint = document.getElementById("residentFamilyLeaderHint");
+    const residentFamilyRelationshipField = document.getElementById("residentFamilyRelationshipField");
+    const residentFamilyRelationshipInput = document.getElementById("residentFamilyRelationship");
+    const pinAddressButton = document.getElementById("pinAddressButton");
+    const pinAddressDefaultLabel = pinAddressButton.textContent;
+    const residentMapOverlay = document.getElementById("residentMapOverlay");
+    const residentMapElement = document.getElementById("residentMap");
+    const residentMapCloseButton = document.getElementById("residentMapCloseButton");
+    const residentMapCancelButton = document.getElementById("residentMapCancelButton");
+    const residentMapUseButton = document.getElementById("residentMapUseButton");
+    const residentMapResetButton = document.getElementById("residentMapResetButton");
+    const residentMapCoords = document.getElementById("residentMapCoords");
+    const residentMapLatitudeInput = document.getElementById("residentMapLatitude");
+    const residentMapLongitudeInput = document.getElementById("residentMapLongitude");
+    const residentMapApplyCoordsButton = document.getElementById("residentMapApplyCoordsButton");
+    const residentDetailOverlay = document.getElementById("residentDetailOverlay");
+    const residentDetailCloseButton = document.getElementById("residentDetailCloseButton");
+    const residentDetailEditButton = document.getElementById("residentDetailEditButton");
+    const residentDetailDoneButton = document.getElementById("residentDetailDoneButton");
+    const residentDetailCoords = document.getElementById("residentDetailCoords");
+    const detailName = document.getElementById("detailName");
+    const detailGender = document.getElementById("detailGender");
+    const detailCivilStatus = document.getElementById("detailCivilStatus");
+    const detailBeneficiary = document.getElementById("detailBeneficiary");
+    const detailBirthDate = document.getElementById("detailBirthDate");
+    const detailAge = document.getElementById("detailAge");
+    const detailAgeClassification = document.getElementById("detailAgeClassification");
+    const detailContact = document.getElementById("detailContact");
+    const detailNationality = document.getElementById("detailNationality");
+    const detailReligion = document.getElementById("detailReligion");
+    const detailFamilyMemberName = document.getElementById("detailFamilyMemberName");
+    const detailAddress = document.getElementById("detailAddress");
+    const detailLocation = document.getElementById("detailLocation");
+    const residentDetailMapElement = document.getElementById("residentDetailMap");
+    const orgPunongBarangayInput = document.getElementById("orgPunongBarangay");
+    const orgSangguniangBarangay1Input = document.getElementById("orgSangguniangBarangay1");
+    const orgSangguniangBarangay2Input = document.getElementById("orgSangguniangBarangay2");
+    const orgSangguniangBarangay3Input = document.getElementById("orgSangguniangBarangay3");
+    const orgSangguniangBarangay4Input = document.getElementById("orgSangguniangBarangay4");
+    const orgSangguniangBarangay5Input = document.getElementById("orgSangguniangBarangay5");
+    const orgSangguniangBarangay6Input = document.getElementById("orgSangguniangBarangay6");
+    const orgSangguniangBarangay7Input = document.getElementById("orgSangguniangBarangay7");
+    const orgSkChairpersonInput = document.getElementById("orgSkChairperson");
+    const orgSkMember1Input = document.getElementById("orgSkMember1");
+    const orgSkMember2Input = document.getElementById("orgSkMember2");
+    const orgSkMember3Input = document.getElementById("orgSkMember3");
+    const orgSkMember4Input = document.getElementById("orgSkMember4");
+    const orgSkMember5Input = document.getElementById("orgSkMember5");
+    const orgSkMember6Input = document.getElementById("orgSkMember6");
+    const orgSkMember7Input = document.getElementById("orgSkMember7");
+    const orgBarangaySecretaryInput = document.getElementById("orgBarangaySecretary");
+    const orgBarangayTreasurerInput = document.getElementById("orgBarangayTreasurer");
+    const orgCouncilMemberInputs = [
+      orgSangguniangBarangay1Input,
+      orgSangguniangBarangay2Input,
+      orgSangguniangBarangay3Input,
+      orgSangguniangBarangay4Input,
+      orgSangguniangBarangay5Input,
+      orgSangguniangBarangay6Input,
+      orgSangguniangBarangay7Input
+    ];
+    const orgSkMemberInputs = [
+      orgSkMember1Input,
+      orgSkMember2Input,
+      orgSkMember3Input,
+      orgSkMember4Input,
+      orgSkMember5Input,
+      orgSkMember6Input,
+      orgSkMember7Input
+    ];
+    const orgPunongPhotoInput = document.getElementById("orgPunongPhotoInput");
+    const orgPunongPhotoPickButton = document.getElementById("orgPunongPhotoPickButton");
+    const orgPunongPhotoName = document.getElementById("orgPunongPhotoName");
+    const orgCouncilPhotoInput1 = document.getElementById("orgCouncilPhotoInput1");
+    const orgCouncilPhotoInput2 = document.getElementById("orgCouncilPhotoInput2");
+    const orgCouncilPhotoInput3 = document.getElementById("orgCouncilPhotoInput3");
+    const orgCouncilPhotoInput4 = document.getElementById("orgCouncilPhotoInput4");
+    const orgCouncilPhotoInput5 = document.getElementById("orgCouncilPhotoInput5");
+    const orgCouncilPhotoInput6 = document.getElementById("orgCouncilPhotoInput6");
+    const orgCouncilPhotoInput7 = document.getElementById("orgCouncilPhotoInput7");
+    const orgCouncilPhotoPickButton1 = document.getElementById("orgCouncilPhotoPickButton1");
+    const orgCouncilPhotoPickButton2 = document.getElementById("orgCouncilPhotoPickButton2");
+    const orgCouncilPhotoPickButton3 = document.getElementById("orgCouncilPhotoPickButton3");
+    const orgCouncilPhotoPickButton4 = document.getElementById("orgCouncilPhotoPickButton4");
+    const orgCouncilPhotoPickButton5 = document.getElementById("orgCouncilPhotoPickButton5");
+    const orgCouncilPhotoPickButton6 = document.getElementById("orgCouncilPhotoPickButton6");
+    const orgCouncilPhotoPickButton7 = document.getElementById("orgCouncilPhotoPickButton7");
+    const orgCouncilPhotoName1 = document.getElementById("orgCouncilPhotoName1");
+    const orgCouncilPhotoName2 = document.getElementById("orgCouncilPhotoName2");
+    const orgCouncilPhotoName3 = document.getElementById("orgCouncilPhotoName3");
+    const orgCouncilPhotoName4 = document.getElementById("orgCouncilPhotoName4");
+    const orgCouncilPhotoName5 = document.getElementById("orgCouncilPhotoName5");
+    const orgCouncilPhotoName6 = document.getElementById("orgCouncilPhotoName6");
+    const orgCouncilPhotoName7 = document.getElementById("orgCouncilPhotoName7");
+    const orgCouncilPhotoInputs = [
+      orgCouncilPhotoInput1,
+      orgCouncilPhotoInput2,
+      orgCouncilPhotoInput3,
+      orgCouncilPhotoInput4,
+      orgCouncilPhotoInput5,
+      orgCouncilPhotoInput6,
+      orgCouncilPhotoInput7
+    ];
+    const orgCouncilPhotoPickButtons = [
+      orgCouncilPhotoPickButton1,
+      orgCouncilPhotoPickButton2,
+      orgCouncilPhotoPickButton3,
+      orgCouncilPhotoPickButton4,
+      orgCouncilPhotoPickButton5,
+      orgCouncilPhotoPickButton6,
+      orgCouncilPhotoPickButton7
+    ];
+    const orgCouncilPhotoNotes = [
+      orgCouncilPhotoName1,
+      orgCouncilPhotoName2,
+      orgCouncilPhotoName3,
+      orgCouncilPhotoName4,
+      orgCouncilPhotoName5,
+      orgCouncilPhotoName6,
+      orgCouncilPhotoName7
+    ];
+    const orgSkChairPhotoInput = document.getElementById("orgSkChairPhotoInput");
+    const orgSkChairPhotoPickButton = document.getElementById("orgSkChairPhotoPickButton");
+    const orgSkChairPhotoName = document.getElementById("orgSkChairPhotoName");
+    const orgSkMemberPhotoInputs = Array.from({ length: 7 }, (_, index) =>
+      document.getElementById("orgSkMemberPhotoInput" + (index + 1))
+    );
+    const orgSkMemberPhotoPickButtons = Array.from({ length: 7 }, (_, index) =>
+      document.getElementById("orgSkMemberPhotoPickButton" + (index + 1))
+    );
+    const orgSkMemberPhotoNotes = Array.from({ length: 7 }, (_, index) =>
+      document.getElementById("orgSkMemberPhotoName" + (index + 1))
+    );
+    const orgSecretaryPhotoInput = document.getElementById("orgSecretaryPhotoInput");
+    const orgSecretaryPhotoPickButton = document.getElementById("orgSecretaryPhotoPickButton");
+    const orgSecretaryPhotoName = document.getElementById("orgSecretaryPhotoName");
+    const orgTreasurerPhotoInput = document.getElementById("orgTreasurerPhotoInput");
+    const orgTreasurerPhotoPickButton = document.getElementById("orgTreasurerPhotoPickButton");
+    const orgTreasurerPhotoName = document.getElementById("orgTreasurerPhotoName");
+    const orgConvertButton = document.getElementById("orgConvertButton");
+    const orgEditButton = document.getElementById("orgEditButton");
+    const orgStructureStatus = document.getElementById("orgStructureStatus");
+    const orgChartOutput = document.getElementById("orgChartOutput");
+    const orgStructureFields = document.getElementById("orgStructureFields");
+
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const sideTabButtons = document.querySelectorAll(".side-item[data-tab]");
+    const tabPanels = document.querySelectorAll(".tab-panel");
+    let residentPinnedPoint = null;
+    let residentMap = null;
+    let residentMarker = null;
+    let residentDetailMap = null;
+    let residentDetailMarker = null;
+    let activeResidentIndex = null;
+    let editingResidentIndex = null;
+    let selectedAccountPhoto = "";
+    let selectedAccountMapPoint = null;
+    let accountMap = null;
+    let accountMapMarker = null;
+    let gisOverviewMap = null;
+    let gisResidentMarkersLayer = null;
+    let latestResidentsSnapshot = [];
+    let residentNameSearchQuery = "";
+    let availableFamilyLeaderChoices = [];
+    let orgPunongBarangayPhoto = "";
+    let orgCouncilPhotos = Array(7).fill("");
+    let orgSkChairpersonPhoto = "";
+    let orgSkMemberPhotos = Array(7).fill("");
+    let orgBarangaySecretaryPhoto = "";
+    let orgBarangayTreasurerPhoto = "";
+    const REPORT_COLORS = [
+      "#3e8ef0",
+      "#56b7ff",
+      "#66d96b",
+      "#f2be5a",
+      "#4bc2d5",
+      "#4f85f1",
+      "#7ab5ff",
+      "#66c5a8",
+      "#f0a667",
+      "#8ec7f7",
+      "#7cd9e8",
+      "#5ea7e8"
+    ];
+    const NOT_SPECIFIED_LABEL = "Not specified";
+
+    const readResidents = async () => {
+      try {
+        const raw = localStorage.getItem(RESIDENTS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        return [];
+      }
+    };
+
+    const readAccounts = () => {
+      try {
+        const raw = localStorage.getItem(ACCOUNTS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        return [];
+      }
+    };
+
+    const saveAccounts = (accounts) => {
+      localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+    };
+
+    const setFormMessage = (message, isError) => {
+      residentFormStatus.textContent = message;
+      residentFormStatus.style.color = isError ? "#b4232f" : "";
+    };
+
+    const saveResidents = async (residents) => {
+      try {
+        localStorage.setItem(RESIDENTS_KEY, JSON.stringify(residents));
+      } catch (error) {
+        throw new Error("Unable to save residents.");
+      }
+    };
+
+    const readOrgStructure = () => {
+      try {
+        const raw = localStorage.getItem(ORG_STRUCTURE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (error) {
+        return null;
+      }
+    };
+
+    const saveOrgStructure = (data) => {
+      localStorage.setItem(ORG_STRUCTURE_KEY, JSON.stringify(data));
+    };
+
+    const setOrgStructureStatus = (message, isError) => {
+      orgStructureStatus.textContent = message;
+      orgStructureStatus.style.color = isError ? "#b4232f" : "";
+    };
+
+    const setOrgEditMode = (isEditing) => {
+      if (orgStructureFields) {
+        orgStructureFields.hidden = !isEditing;
+      }
+      if (orgConvertButton) {
+        orgConvertButton.hidden = !isEditing;
+      }
+      if (orgEditButton) {
+        orgEditButton.hidden = isEditing;
+      }
+    };
+
+    const escapeHtml = (value) =>
+      String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+    const getOrgStructureFromInputs = () => {
+      const councilMembers = orgCouncilMemberInputs.map((input) =>
+        normalizeNamePart(input ? input.value : "")
+      );
+      const skMembers = orgSkMemberInputs.map((input) =>
+        normalizeNamePart(input ? input.value : "")
+      );
+
+      return {
+        punongBarangay: normalizeNamePart(orgPunongBarangayInput.value),
+        punongBarangayPhoto: orgPunongBarangayPhoto,
+        sangguniangBarangay: councilMembers,
+        sangguniangBarangayPhotos: orgCouncilPhotos.slice(0, 7),
+        skChairperson: normalizeNamePart(orgSkChairpersonInput.value),
+        skChairpersonPhoto: orgSkChairpersonPhoto,
+        skMembers,
+        skMemberPhotos: orgSkMemberPhotos.slice(0, 7),
+        barangaySecretary: normalizeNamePart(orgBarangaySecretaryInput.value),
+        barangaySecretaryPhoto: orgBarangaySecretaryPhoto,
+        barangayTreasurer: normalizeNamePart(orgBarangayTreasurerInput.value),
+        barangayTreasurerPhoto: orgBarangayTreasurerPhoto
+      };
+    };
+
+    const updateOrgPhotoNote = (noteElement, photoSource, fileName) => {
+      if (!noteElement) {
+        return;
+      }
+      if (fileName) {
+        noteElement.textContent = "Selected: " + fileName;
+        return;
+      }
+
+      if (photoSource) {
+        noteElement.textContent = "Photo saved.";
+        return;
+      }
+
+      noteElement.textContent = "No photo selected.";
+    };
+
+    const updateOrgCouncilPhotoNote = (index, photoSource, fileName) => {
+      updateOrgPhotoNote(orgCouncilPhotoNotes[index], photoSource, fileName);
+    };
+
+    const updateOrgSkMemberPhotoNote = (index, photoSource, fileName) => {
+      updateOrgPhotoNote(orgSkMemberPhotoNotes[index], photoSource, fileName);
+    };
+
+    const applyOrgStructureToInputs = (data) => {
+      const orgData = data || {};
+      const council = Array.isArray(orgData.sangguniangBarangay) ? orgData.sangguniangBarangay : [];
+      const skMembers = Array.isArray(orgData.skMembers) ? orgData.skMembers : [];
+      const councilPhotos = Array.isArray(orgData.sangguniangBarangayPhotos)
+        ? orgData.sangguniangBarangayPhotos
+        : [];
+      const skMemberPhotos = Array.isArray(orgData.skMemberPhotos) ? orgData.skMemberPhotos : [];
+      orgPunongBarangayInput.value = normalizeNamePart(orgData.punongBarangay);
+      orgCouncilMemberInputs.forEach((input, index) => {
+        if (input) {
+          input.value = normalizeNamePart(council[index]);
+        }
+      });
+      orgSkChairpersonInput.value = normalizeNamePart(orgData.skChairperson);
+      orgSkMemberInputs.forEach((input, index) => {
+        if (input) {
+          input.value = normalizeNamePart(skMembers[index]);
+        }
+      });
+      orgBarangaySecretaryInput.value = normalizeNamePart(orgData.barangaySecretary);
+      orgBarangayTreasurerInput.value = normalizeNamePart(orgData.barangayTreasurer);
+
+      orgPunongBarangayPhoto = String(orgData.punongBarangayPhoto || "");
+      orgCouncilPhotos = Array.from({ length: 7 }, (_, index) => String(councilPhotos[index] || ""));
+      orgSkChairpersonPhoto = String(orgData.skChairpersonPhoto || "");
+      orgSkMemberPhotos = Array.from({ length: 7 }, (_, index) => String(skMemberPhotos[index] || ""));
+      orgBarangaySecretaryPhoto = String(orgData.barangaySecretaryPhoto || "");
+      orgBarangayTreasurerPhoto = String(orgData.barangayTreasurerPhoto || "");
+
+      [
+        orgPunongPhotoInput,
+        ...orgCouncilPhotoInputs,
+        orgSkChairPhotoInput,
+        ...orgSkMemberPhotoInputs,
+        orgSecretaryPhotoInput,
+        orgTreasurerPhotoInput
+      ].forEach((input) => {
+        if (input) {
+          input.value = "";
+        }
+      });
+
+      updateOrgPhotoNote(orgPunongPhotoName, orgPunongBarangayPhoto, "");
+      orgCouncilPhotos.forEach((photo, index) => {
+        updateOrgCouncilPhotoNote(index, photo, "");
+      });
+      updateOrgPhotoNote(orgSkChairPhotoName, orgSkChairpersonPhoto, "");
+      orgSkMemberPhotos.forEach((photo, index) => {
+        updateOrgSkMemberPhotoNote(index, photo, "");
+      });
+      updateOrgPhotoNote(orgSecretaryPhotoName, orgBarangaySecretaryPhoto, "");
+      updateOrgPhotoNote(orgTreasurerPhotoName, orgBarangayTreasurerPhoto, "");
+    };
+
+    const renderOrgStructureChart = (data) => {
+      const orgData = data || {};
+      const councilMembersRaw = Array.isArray(orgData.sangguniangBarangay)
+        ? orgData.sangguniangBarangay
+        : [];
+      const councilPhotosRaw = Array.isArray(orgData.sangguniangBarangayPhotos)
+        ? orgData.sangguniangBarangayPhotos
+        : [];
+      const skMembersRaw = Array.isArray(orgData.skMembers) ? orgData.skMembers : [];
+      const skMemberPhotosRaw = Array.isArray(orgData.skMemberPhotos) ? orgData.skMemberPhotos : [];
+      const councilMembers = Array.from({ length: 7 }, (_, index) =>
+        normalizeNamePart(councilMembersRaw[index]) || "TBD"
+      );
+      const councilPhotos = Array.from({ length: 7 }, (_, index) =>
+        String(councilPhotosRaw[index] || "")
+      );
+      const skMembers = Array.from({ length: 7 }, (_, index) =>
+        normalizeNamePart(skMembersRaw[index]) || "TBD"
+      );
+      const skMemberPhotos = Array.from({ length: 7 }, (_, index) =>
+        String(skMemberPhotosRaw[index] || "")
+      );
+      const punongPhoto = String(orgData.punongBarangayPhoto || "");
+      const skChairPhoto = String(orgData.skChairpersonPhoto || "");
+      const secretaryPhoto = String(orgData.barangaySecretaryPhoto || "");
+      const treasurerPhoto = String(orgData.barangayTreasurerPhoto || "");
+      const buildPhotoTag = (photoSource, altText) =>
+        photoSource
+          ? "<img class='org-chart-node-photo' src='" + escapeHtml(photoSource) + "' alt='" + escapeHtml(altText) + "' />"
+          : "";
+
+      orgChartOutput.innerHTML =
+        "<div class='org-chart-title'>Barangay Organizational Chart</div>" +
+        "<div class='org-chart-level'>" +
+          "<div class='org-chart-node'>" +
+            "<span class='org-chart-node-role'>Punong Barangay</span>" +
+            buildPhotoTag(punongPhoto, "Punong Barangay Photo") +
+            "<span class='org-chart-node-name'>" + escapeHtml(normalizeNamePart(orgData.punongBarangay) || "TBD") + "</span>" +
+          "</div>" +
+        "</div>" +
+        "<div class='org-chart-level'>" +
+          "<div class='org-chart-node'>" +
+            "<span class='org-chart-node-role'>Sangguniang Kabataan Chairperson</span>" +
+            buildPhotoTag(skChairPhoto, "SK Chairperson Photo") +
+            "<span class='org-chart-node-name'>" + escapeHtml(normalizeNamePart(orgData.skChairperson) || "TBD") + "</span>" +
+          "</div>" +
+          "<div class='org-chart-node'>" +
+            "<span class='org-chart-node-role'>Barangay Secretary</span>" +
+            buildPhotoTag(secretaryPhoto, "Barangay Secretary Photo") +
+            "<span class='org-chart-node-name'>" + escapeHtml(normalizeNamePart(orgData.barangaySecretary) || "TBD") + "</span>" +
+          "</div>" +
+          "<div class='org-chart-node'>" +
+            "<span class='org-chart-node-role'>Barangay Treasurer</span>" +
+            buildPhotoTag(treasurerPhoto, "Barangay Treasurer Photo") +
+            "<span class='org-chart-node-name'>" + escapeHtml(normalizeNamePart(orgData.barangayTreasurer) || "TBD") + "</span>" +
+          "</div>" +
+        "</div>" +
+        "<div class='org-chart-subtitle'>Sangguniang Barangay Council</div>" +
+        "<div class='org-chart-council-grid'>" +
+          councilMembers
+            .map((member, index) =>
+              "<div class='org-chart-node'>" +
+                "<span class='org-chart-node-role'>Council Member " + (index + 1) + "</span>" +
+                buildPhotoTag(councilPhotos[index], "Council Member " + (index + 1) + " Photo") +
+                "<span class='org-chart-node-name'>" + escapeHtml(member) + "</span>" +
+              "</div>"
+            )
+            .join("") +
+        "</div>" +
+        "<div class='org-chart-subtitle'>Sangguniang Kabataan Members</div>" +
+        "<div class='org-chart-council-grid'>" +
+          skMembers
+            .map((member, index) =>
+              "<div class='org-chart-node'>" +
+                "<span class='org-chart-node-role'>SK Member " + (index + 1) + "</span>" +
+                buildPhotoTag(skMemberPhotos[index], "SK Member " + (index + 1) + " Photo") +
+                "<span class='org-chart-node-name'>" + escapeHtml(member) + "</span>" +
+              "</div>"
+            )
+            .join("") +
+        "</div>";
+
+      orgChartOutput.hidden = false;
+    };
+
+    const initializeOrgStructure = () => {
+      const saved = readOrgStructure();
+      if (!saved) {
+        orgChartOutput.hidden = true;
+        setOrgEditMode(true);
+        orgPunongBarangayPhoto = "";
+        orgCouncilPhotos = Array(7).fill("");
+        orgSkChairpersonPhoto = "";
+        orgSkMemberPhotos = Array(7).fill("");
+        orgBarangaySecretaryPhoto = "";
+        orgBarangayTreasurerPhoto = "";
+        [
+          orgPunongPhotoInput,
+          ...orgCouncilPhotoInputs,
+          orgSkChairPhotoInput,
+          ...orgSkMemberPhotoInputs,
+          orgSecretaryPhotoInput,
+          orgTreasurerPhotoInput
+        ].forEach((input) => {
+          if (input) {
+            input.value = "";
+          }
+        });
+        updateOrgPhotoNote(orgPunongPhotoName, "", "");
+        for (let index = 0; index < 7; index += 1) {
+          updateOrgCouncilPhotoNote(index, "", "");
+          updateOrgSkMemberPhotoNote(index, "", "");
+        }
+        updateOrgPhotoNote(orgSkChairPhotoName, "", "");
+        updateOrgPhotoNote(orgSecretaryPhotoName, "", "");
+        updateOrgPhotoNote(orgTreasurerPhotoName, "", "");
+        setOrgStructureStatus("", false);
+        return;
+      }
+      applyOrgStructureToInputs(saved);
+      renderOrgStructureChart(saved);
+      setOrgEditMode(false);
+      setOrgStructureStatus("", false);
+    };
+
+    const getAgeFromBirthDate = (birthDateText) => {
+      if (!birthDateText) {
+        return null;
+      }
+
+      const birthDate = new Date(birthDateText);
+      if (Number.isNaN(birthDate.getTime())) {
+        return null;
+      }
+
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age -= 1;
+      }
+      if (age < 0) {
+        return null;
+      }
+      return age;
+    };
+
+    const getAgeClassificationFromAge = (age) => {
+      if (age === null || age === undefined || Number.isNaN(Number(age))) {
+        return "";
+      }
+      const numericAge = Number(age);
+      if (numericAge <= 11) {
+        return "Child";
+      }
+      if (numericAge <= 17) {
+        return "Teenager";
+      }
+      if (numericAge <= 25) {
+        return "Young";
+      }
+      if (numericAge <= 59) {
+        return "Adult";
+      }
+      return "Senior";
+    };
+
+    const normalizeAgeClassification = (classification) => {
+      if (classification === "Old") {
+        return "Adult";
+      }
+      return classification || "";
+    };
+
+    const toTitleCase = (text) =>
+      String(text || "")
+        .toLowerCase()
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+    const normalizeAgeClassificationLabel = (value) => {
+      const text = String(value || "").trim();
+      if (!text) {
+        return NOT_SPECIFIED_LABEL;
+      }
+
+      const key = text.toLowerCase();
+      if (key === "old" || key === "adult") {
+        return "Adult";
+      }
+      if (key === "child") {
+        return "Child";
+      }
+      if (key === "teenager") {
+        return "Teenager";
+      }
+      if (key === "young") {
+        return "Young";
+      }
+      if (key === "senior") {
+        return "Senior";
+      }
+      return toTitleCase(text);
+    };
+
+    const normalizeBeneficiaryLabel = (value) => {
+      const text = String(value || "").trim();
+      if (!text) {
+        return NOT_SPECIFIED_LABEL;
+      }
+
+      const key = text.toLowerCase();
+      if (key === "4ps") {
+        return "4Ps";
+      }
+      if (key === "tupad") {
+        return "TUPAD";
+      }
+      if (key === "none") {
+        return "None";
+      }
+      if (key === "senior") {
+        return "Senior";
+      }
+      return toTitleCase(text);
+    };
+
+    const normalizeCivilStatusLabel = (value) => {
+      const text = String(value || "").trim();
+      return text ? toTitleCase(text) : NOT_SPECIFIED_LABEL;
+    };
+
+    const normalizeGenderLabel = (value) => {
+      const text = String(value || "").trim();
+      if (!text) {
+        return NOT_SPECIFIED_LABEL;
+      }
+
+      const key = text.toLowerCase();
+      if (key === "male" || key === "m") {
+        return "Male";
+      }
+      if (key === "female" || key === "f") {
+        return "Female";
+      }
+      return toTitleCase(text);
+    };
+
+    const normalizeNamePart = (value) =>
+      String(value || "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const KNOWN_NAME_SUFFIXES = ["JR", "SR", "II", "III", "IV", "V", "VI"];
+
+    const extractSuffixFromTokens = (tokens) => {
+      if (!tokens.length) {
+        return "";
+      }
+
+      const candidate = tokens[tokens.length - 1];
+      const normalizedCandidate = normalizeNamePart(candidate).replace(/\./g, "").toUpperCase();
+      if (!KNOWN_NAME_SUFFIXES.includes(normalizedCandidate)) {
+        return "";
+      }
+
+      tokens.pop();
+      return normalizeNamePart(candidate);
+    };
+
+    const splitResidentName = (fullName) => {
+      const text = normalizeNamePart(fullName);
+      if (!text) {
+        return {
+          surname: "",
+          firstName: "",
+          middleName: "",
+          suffix: ""
+        };
+      }
+
+      if (text.includes(",")) {
+        const [rawSurname, rawGiven] = text.split(",", 2);
+        const givenTokens = normalizeNamePart(rawGiven).split(" ").filter(Boolean);
+        const suffix = extractSuffixFromTokens(givenTokens);
+        const firstName = givenTokens.shift() || "";
+        return {
+          surname: normalizeNamePart(rawSurname),
+          firstName: normalizeNamePart(firstName),
+          middleName: normalizeNamePart(givenTokens.join(" ")),
+          suffix: suffix
+        };
+      }
+
+      const tokens = text.split(" ").filter(Boolean);
+      const suffix = extractSuffixFromTokens(tokens);
+      if (tokens.length === 1) {
+        return {
+          surname: "",
+          firstName: normalizeNamePart(tokens[0]),
+          middleName: "",
+          suffix: suffix
+        };
+      }
+
+      return {
+        surname: normalizeNamePart(tokens[tokens.length - 1]),
+        firstName: normalizeNamePart(tokens[0]),
+        middleName: normalizeNamePart(tokens.slice(1, -1).join(" ")),
+        suffix: suffix
+      };
+    };
+
+    const composeResidentName = (parts) => {
+      const surname = normalizeNamePart(parts && parts.surname);
+      const firstName = normalizeNamePart(parts && parts.firstName);
+      const middleName = normalizeNamePart(parts && parts.middleName);
+      const suffix = normalizeNamePart(parts && parts.suffix);
+
+      const givenName = [firstName, middleName, suffix].filter(Boolean).join(" ");
+      if (surname && givenName) {
+        return surname + ", " + givenName;
+      }
+      if (surname) {
+        return surname;
+      }
+      return givenName;
+    };
+
+    const getResidentNameParts = (resident) => {
+      const directParts = {
+        surname: normalizeNamePart((resident && (resident.surname || resident.lastName)) || ""),
+        firstName: normalizeNamePart((resident && resident.firstName) || ""),
+        middleName: normalizeNamePart((resident && resident.middleName) || ""),
+        suffix: normalizeNamePart((resident && resident.suffix) || "")
+      };
+
+      if (directParts.surname || directParts.firstName || directParts.middleName || directParts.suffix) {
+        return directParts;
+      }
+
+      return splitResidentName(resident && resident.name ? resident.name : "");
+    };
+
+    const getResidentDisplayName = (resident) => {
+      const parts = getResidentNameParts(resident);
+      const fullName = composeResidentName(parts);
+      if (fullName) {
+        return fullName;
+      }
+      return normalizeNamePart(resident && resident.name ? resident.name : "");
+    };
+
+    const normalizeFamilyPosition = (value) => {
+      const text = String(value || "").trim().toLowerCase();
+      if (text === "family leader") {
+        return "Family Leader";
+      }
+      if (text === "family member") {
+        return "Family Member";
+      }
+      return "";
+    };
+
+    const normalizeFamilyRelationship = (value) => {
+      const text = String(value || "").trim().toLowerCase();
+      if (text === "wife") {
+        return "Wife";
+      }
+      if (text === "husband") {
+        return "Husband";
+      }
+      if (text === "child") {
+        return "Child";
+      }
+      return "";
+    };
+
+    const normalizeSpousalRelationshipForResident = (relationship, resident) => {
+      const normalized = normalizeFamilyRelationship(relationship);
+      if (!normalized || normalized === "Child") {
+        return normalized;
+      }
+
+      const gender = String((resident && (resident.gender || resident.sex)) || "")
+        .trim()
+        .toLowerCase();
+      if (gender === "female" && normalized === "Husband") {
+        return "Wife";
+      }
+      if (gender === "male" && normalized === "Wife") {
+        return "Husband";
+      }
+      return normalized;
+    };
+
+    const getMatchedFamilyLeaderName = (leaderNameInput, leaderChoices) => {
+      const typedName = normalizeNamePart(leaderNameInput).toLowerCase();
+      if (!typedName) {
+        return "";
+      }
+
+      const choices = Array.isArray(leaderChoices) ? leaderChoices : [];
+      const matched = choices.find((choice) => choice.toLowerCase() === typedName);
+      return matched || "";
+    };
+
+    const updateFamilyRelationshipFieldState = (leaderChoices) => {
+      const isFamilyMember = normalizeFamilyPosition(residentFamilyPositionInput.value) === "Family Member";
+      const matchedLeaderName = getMatchedFamilyLeaderName(
+        residentFamilyLeaderSearchInput.value,
+        Array.isArray(leaderChoices) ? leaderChoices : availableFamilyLeaderChoices
+      );
+      const shouldShow = isFamilyMember && Boolean(matchedLeaderName);
+
+      residentFamilyRelationshipField.hidden = !shouldShow;
+      residentFamilyRelationshipInput.disabled = !shouldShow;
+      residentFamilyRelationshipInput.required = shouldShow;
+      if (!shouldShow) {
+        residentFamilyRelationshipInput.value = "";
+      }
+
+      return matchedLeaderName;
+    };
+
+    const getFamilyMemberRowsByLeaderName = (residents, leaderName, options = {}) => {
+      const targetLeader = normalizeNamePart(leaderName).toLowerCase();
+      if (!targetLeader) {
+        return [];
+      }
+
+      const excludedName = normalizeNamePart(options.excludeName).toLowerCase();
+      const rows = [];
+      (residents || []).forEach((resident) => {
+        if (normalizeFamilyPosition(resident && resident.familyPosition) !== "Family Member") {
+          return;
+        }
+
+        const linkedLeader = normalizeNamePart(resident && resident.familyLeaderName).toLowerCase();
+        if (!linkedLeader || linkedLeader !== targetLeader) {
+          return;
+        }
+
+        const memberName = normalizeNamePart(getResidentDisplayName(resident));
+        if (memberName) {
+          if (excludedName && memberName.toLowerCase() === excludedName) {
+            return;
+          }
+          const relationship =
+            normalizeSpousalRelationshipForResident(
+              (resident && (resident.familyRelationship || resident.relationshipToFamilyLeader)) || "",
+              resident
+            ) || "Not specified";
+          rows.push({
+            name: memberName,
+            relationship: relationship
+          });
+        }
+      });
+
+      const uniqueRows = [];
+      const seen = new Set();
+      rows.forEach((row) => {
+        const key = row.name + "|" + row.relationship;
+        if (seen.has(key)) {
+          return;
+        }
+        seen.add(key);
+        uniqueRows.push(row);
+      });
+      return uniqueRows;
+    };
+
+    const getLeaderRelationshipFromMemberRelationship = (memberRelationship, memberResident) => {
+      const relationship = normalizeSpousalRelationshipForResident(memberRelationship, memberResident);
+      if (relationship === "Husband") {
+        return "Wife";
+      }
+      if (relationship === "Wife") {
+        return "Husband";
+      }
+      if (relationship === "Child") {
+        return "Family Leader";
+      }
+      return "Family Leader";
+    };
+
+    const getFamilyLeaderRowForMember = (residents, resident) => {
+      const leaderName = normalizeNamePart((resident && (resident.familyLeaderName || resident.familyLeader)) || "");
+      if (!leaderName) {
+        return null;
+      }
+
+      const leaderResident = findFamilyLeaderResidentByName(residents, leaderName, null);
+      const resolvedLeaderName = leaderResident
+        ? normalizeNamePart(getResidentDisplayName(leaderResident))
+        : leaderName;
+      if (!resolvedLeaderName) {
+        return null;
+      }
+
+      return {
+        name: resolvedLeaderName,
+        relationship: getLeaderRelationshipFromMemberRelationship(
+          resident && (resident.familyRelationship || resident.relationshipToFamilyLeader),
+          resident
+        )
+      };
+    };
+
+    const getFamilyLeaderChoices = (residents, excludeIndex) => {
+      const choices = [];
+      (residents || []).forEach((resident, index) => {
+        if (excludeIndex !== null && excludeIndex !== undefined && index === excludeIndex) {
+          return;
+        }
+        if (normalizeFamilyPosition(resident && resident.familyPosition) !== "Family Leader") {
+          return;
+        }
+        const displayName = normalizeNamePart(getResidentDisplayName(resident));
+        if (displayName) {
+          choices.push(displayName);
+        }
+      });
+      return Array.from(new Set(choices)).sort((a, b) => a.localeCompare(b));
+    };
+
+    const findFamilyLeaderResidentByName = (residents, leaderName, excludeIndex) => {
+      const selectedName = normalizeNamePart(leaderName).toLowerCase();
+      if (!selectedName) {
+        return null;
+      }
+
+      for (let index = 0; index < (residents || []).length; index += 1) {
+        if (excludeIndex !== null && excludeIndex !== undefined && index === excludeIndex) {
+          continue;
+        }
+        const resident = residents[index];
+        if (normalizeFamilyPosition(resident && resident.familyPosition) !== "Family Leader") {
+          continue;
+        }
+        const displayName = normalizeNamePart(getResidentDisplayName(resident)).toLowerCase();
+        if (displayName && displayName === selectedName) {
+          return resident;
+        }
+      }
+
+      return null;
+    };
+
+    const applyFamilyMemberLocationFromLeader = (leaderResident) => {
+      if (!leaderResident) {
+        return false;
+      }
+
+      const leaderLocation = String((leaderResident && leaderResident.location) || "").trim();
+      const leaderPoint = parsePointFromResident(leaderResident);
+
+      if (!leaderLocation && !leaderPoint) {
+        return false;
+      }
+
+      if (leaderLocation) {
+        residentLocationInput.value = leaderLocation;
+      } else if (leaderPoint) {
+        residentLocationInput.value =
+          "Pinned location near " + leaderPoint.latitude + ", " + leaderPoint.longitude;
+      }
+
+      if (leaderPoint) {
+        setResidentPinnedLocation(leaderPoint.latitude, leaderPoint.longitude, leaderPoint.zoom);
+      } else {
+        residentPinnedPoint = null;
+        residentMapCoords.textContent = "No location pinned yet.";
+        if (residentMap && residentMarker) {
+          residentMap.removeLayer(residentMarker);
+          residentMarker = null;
+        }
+      }
+
+      return true;
+    };
+
+    const syncFamilyMemberLocationWithLeader = async (options = {}) => {
+      if (normalizeFamilyPosition(residentFamilyPositionInput.value) !== "Family Member") {
+        updateFamilyRelationshipFieldState([]);
+        return false;
+      }
+
+      const leaderName = normalizeNamePart(
+        options.selectedValue !== undefined
+          ? options.selectedValue
+          : residentFamilyLeaderSearchInput.value
+      );
+      if (!leaderName) {
+        updateFamilyRelationshipFieldState(options.leaderChoices);
+        return false;
+      }
+
+      let residents = options.residents;
+      if (!Array.isArray(residents)) {
+        try {
+          residents = await readResidents();
+        } catch (error) {
+          residents = [];
+        }
+      }
+
+      const excludeIndex =
+        editingResidentIndex !== null && editingResidentIndex >= 0 ? editingResidentIndex : null;
+      const leaderChoices = getFamilyLeaderChoices(residents, excludeIndex);
+      const matchedLeaderName = getMatchedFamilyLeaderName(leaderName, leaderChoices);
+      if (!matchedLeaderName) {
+        updateFamilyRelationshipFieldState(leaderChoices);
+        return false;
+      }
+
+      residentFamilyLeaderSearchInput.value = matchedLeaderName;
+      updateFamilyRelationshipFieldState(leaderChoices);
+      const selectedLeader = findFamilyLeaderResidentByName(residents, matchedLeaderName, excludeIndex);
+      return applyFamilyMemberLocationFromLeader(selectedLeader);
+    };
+
+    const renderFamilyLeaderChoices = (choices) => {
+      residentFamilyLeaderOptions.innerHTML = "";
+      (choices || []).forEach((choice) => {
+        const option = document.createElement("option");
+        option.value = choice;
+        residentFamilyLeaderOptions.appendChild(option);
+      });
+    };
+
+    const refreshFamilyLeaderFieldState = async (options = {}) => {
+      const familyPosition = normalizeFamilyPosition(residentFamilyPositionInput.value);
+      const isFamilyMember = familyPosition === "Family Member";
+
+      residentFamilyLeaderField.hidden = !isFamilyMember;
+      residentFamilyLeaderSearchInput.disabled = !isFamilyMember;
+      residentFamilyLeaderSearchInput.required = isFamilyMember;
+      pinAddressButton.disabled = isFamilyMember;
+      pinAddressButton.textContent = isFamilyMember
+        ? "Location follows selected family leader"
+        : pinAddressDefaultLabel;
+
+      if (!isFamilyMember) {
+        availableFamilyLeaderChoices = [];
+        renderFamilyLeaderChoices(availableFamilyLeaderChoices);
+        residentFamilyLeaderHint.textContent = "";
+        residentFamilyLeaderSearchInput.value = "";
+        updateFamilyRelationshipFieldState([]);
+        return;
+      }
+
+      let residents = [];
+      try {
+        residents = await readResidents();
+      } catch (error) {
+        residents = [];
+      }
+
+      const preserveCurrent = Boolean(options.keepCurrentValue);
+      const selectedValue =
+        options.selectedValue !== undefined
+          ? normalizeNamePart(options.selectedValue)
+          : (preserveCurrent ? normalizeNamePart(residentFamilyLeaderSearchInput.value) : "");
+      const excludeIndex =
+        editingResidentIndex !== null && editingResidentIndex >= 0 ? editingResidentIndex : null;
+
+      availableFamilyLeaderChoices = getFamilyLeaderChoices(residents, excludeIndex);
+      renderFamilyLeaderChoices(availableFamilyLeaderChoices);
+      const autoSelectedValue =
+        !selectedValue && availableFamilyLeaderChoices.length === 1
+          ? availableFamilyLeaderChoices[0]
+          : selectedValue;
+      residentFamilyLeaderSearchInput.value = autoSelectedValue;
+      residentFamilyLeaderHint.textContent = availableFamilyLeaderChoices.length
+        ? "Type and select an existing family leader."
+        : "No family leader found yet. Save one resident as Family Leader first.";
+
+      if (options.selectedRelationship !== undefined) {
+        residentFamilyRelationshipInput.value = normalizeFamilyRelationship(options.selectedRelationship);
+      }
+      updateFamilyRelationshipFieldState(availableFamilyLeaderChoices);
+
+      if (autoSelectedValue) {
+        await syncFamilyMemberLocationWithLeader({
+          residents: residents,
+          selectedValue: autoSelectedValue
+        });
+      }
+    };
+
+    const matchesResidentNameSearch = (resident, query) => {
+      const search = String(query || "").trim().toLowerCase();
+      if (!search) {
+        return true;
+      }
+
+      const parts = getResidentNameParts(resident);
+      const searchableText = [
+        parts.surname,
+        parts.firstName,
+        parts.middleName,
+        parts.suffix,
+        getResidentDisplayName(resident),
+        normalizeNamePart(resident && resident.name ? resident.name : "")
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(search);
+    };
+
+    const compareResidentItemsBySurname = (leftItem, rightItem) => {
+      const leftParts = getResidentNameParts(leftItem && leftItem.resident);
+      const rightParts = getResidentNameParts(rightItem && rightItem.resident);
+      const compareText = (leftValue, rightValue) => {
+        const leftText = normalizeNamePart(leftValue);
+        const rightText = normalizeNamePart(rightValue);
+        if (!leftText && !rightText) {
+          return 0;
+        }
+        if (!leftText) {
+          return 1;
+        }
+        if (!rightText) {
+          return -1;
+        }
+        return leftText.localeCompare(rightText, undefined, { sensitivity: "base" });
+      };
+
+      const surnameCompare = compareText(leftParts.surname, rightParts.surname);
+      if (surnameCompare !== 0) {
+        return surnameCompare;
+      }
+      const firstNameCompare = compareText(leftParts.firstName, rightParts.firstName);
+      if (firstNameCompare !== 0) {
+        return firstNameCompare;
+      }
+      const middleNameCompare = compareText(leftParts.middleName, rightParts.middleName);
+      if (middleNameCompare !== 0) {
+        return middleNameCompare;
+      }
+      const suffixCompare = compareText(leftParts.suffix, rightParts.suffix);
+      if (suffixCompare !== 0) {
+        return suffixCompare;
+      }
+
+      return (leftItem && Number(leftItem.index)) - (rightItem && Number(rightItem.index));
+    };
+
+    const buildDistributionData = (residents, selector, preferredOrder) => {
+      const counts = new Map();
+
+      residents.forEach((resident) => {
+        const selected = selector(resident);
+        const label = String(selected || "").trim() || NOT_SPECIFIED_LABEL;
+        counts.set(label, (counts.get(label) || 0) + 1);
+      });
+
+      if (!counts.has(NOT_SPECIFIED_LABEL)) {
+        counts.set(NOT_SPECIFIED_LABEL, 0);
+      }
+
+      const orderedLabels = [];
+      (preferredOrder || []).forEach((label) => {
+        if (counts.has(label) && !orderedLabels.includes(label)) {
+          orderedLabels.push(label);
+        }
+      });
+
+      const remaining = Array.from(counts.keys())
+        .filter((label) => !orderedLabels.includes(label))
+        .sort((a, b) => a.localeCompare(b));
+      const notSpecifiedIndex = remaining.indexOf(NOT_SPECIFIED_LABEL);
+      if (notSpecifiedIndex >= 0) {
+        remaining.splice(notSpecifiedIndex, 1);
+        remaining.push(NOT_SPECIFIED_LABEL);
+      }
+
+      const labels = orderedLabels.concat(remaining);
+      const total = residents.length;
+      return labels.map((label, index) => {
+        const count = counts.get(label) || 0;
+        const percent = total ? (count / total) * 100 : 0;
+        return {
+          label: label,
+          count: count,
+          percent: percent,
+          color: REPORT_COLORS[index % REPORT_COLORS.length]
+        };
+      });
+    };
+
+    const renderChartLegend = (legendElement, distribution) => {
+      legendElement.innerHTML = "";
+
+      distribution.forEach((item) => {
+        const row = document.createElement("li");
+        row.className = "chart-legend-item";
+
+        const labelWrap = document.createElement("span");
+        labelWrap.className = "chart-label-wrap";
+
+        const dot = document.createElement("span");
+        dot.className = "chart-dot";
+        dot.style.background = item.color;
+
+        const labelText = document.createElement("span");
+        labelText.className = "chart-label-text";
+        labelText.textContent = item.label;
+
+        const valueText = document.createElement("span");
+        valueText.className = "chart-value-text";
+        valueText.textContent = item.count + " (" + item.percent.toFixed(1) + "%)";
+
+        labelWrap.appendChild(dot);
+        labelWrap.appendChild(labelText);
+        row.appendChild(labelWrap);
+        row.appendChild(valueText);
+        legendElement.appendChild(row);
+      });
+    };
+
+    const drawPieChart = (canvas, distribution, totalResidents) => {
+      const context = canvas.getContext("2d");
+      if (!context) {
+        return;
+      }
+
+      const width = canvas.clientWidth || canvas.width || 300;
+      const height = canvas.clientHeight || canvas.height || 220;
+      const pixelRatio = window.devicePixelRatio || 1;
+      const scaledWidth = Math.round(width * pixelRatio);
+      const scaledHeight = Math.round(height * pixelRatio);
+
+      if (canvas.width !== scaledWidth || canvas.height !== scaledHeight) {
+        canvas.width = scaledWidth;
+        canvas.height = scaledHeight;
+      }
+
+      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      context.clearRect(0, 0, width, height);
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const radius = Math.min(width, height) * 0.36;
+
+      const slices = distribution.filter((item) => item.count > 0);
+      if (!totalResidents || !slices.length) {
+        context.fillStyle = "#f7e7f3";
+        context.beginPath();
+        context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = "#735784";
+        context.font = "600 12px Segoe UI, Arial, sans-serif";
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText("NO RESIDENT DATA", centerX, centerY);
+        return;
+      }
+
+      let startAngle = -Math.PI / 2;
+      slices.forEach((item) => {
+        const sweep = (item.count / totalResidents) * Math.PI * 2;
+        const endAngle = startAngle + sweep;
+
+        context.fillStyle = item.color;
+        context.beginPath();
+        context.moveTo(centerX, centerY);
+        context.arc(centerX, centerY, radius, startAngle, endAngle);
+        context.closePath();
+        context.fill();
+        context.strokeStyle = "rgba(255, 255, 255, 0.9)";
+        context.lineWidth = 1.25;
+        context.stroke();
+
+        if (item.percent >= 5) {
+          const mid = startAngle + sweep / 2;
+          const labelX = centerX + Math.cos(mid) * (radius * 0.68);
+          const labelY = centerY + Math.sin(mid) * (radius * 0.68);
+          context.fillStyle = "#ffffff";
+          context.font = "700 11px Segoe UI, Arial, sans-serif";
+          context.textAlign = "center";
+          context.textBaseline = "middle";
+          context.fillText(item.percent.toFixed(1) + "%", labelX, labelY);
+        }
+
+        startAngle = endAngle;
+      });
+
+      context.fillStyle = "#ffffff";
+      context.beginPath();
+      context.arc(centerX, centerY, radius * 0.58, 0, Math.PI * 2);
+      context.fill();
+
+      context.fillStyle = "#5a4270";
+      context.font = "700 17px Segoe UI, Arial, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(String(totalResidents), centerX, centerY - 5);
+
+      context.fillStyle = "#7a6789";
+      context.font = "600 10px Segoe UI, Arial, sans-serif";
+      context.fillText("RESIDENTS", centerX, centerY + 11);
+    };
+
+    const renderReports = (residents) => {
+      const total = residents.length;
+
+      const ageDistribution = buildDistributionData(
+        residents,
+        (resident) => {
+          const ageValue =
+            resident.age !== undefined && resident.age !== null && resident.age !== ""
+              ? Number(resident.age)
+              : getAgeFromBirthDate(resident.birthDate);
+          const rawClassification = resident.ageClassification
+            ? resident.ageClassification
+            : (resident.residencyStatus || getAgeClassificationFromAge(ageValue));
+          const normalized = normalizeAgeClassification(rawClassification);
+          return normalizeAgeClassificationLabel(normalized);
+        },
+        ["Child", "Teenager", "Young", "Adult", "Senior", NOT_SPECIFIED_LABEL]
+      );
+
+      const beneficiaryDistribution = buildDistributionData(
+        residents,
+        (resident) => normalizeBeneficiaryLabel(resident.beneficiary),
+        ["None", "Senior", "4Ps", "TUPAD", NOT_SPECIFIED_LABEL]
+      );
+
+      const civilStatusDistribution = buildDistributionData(
+        residents,
+        (resident) => normalizeCivilStatusLabel(resident.civilStatus),
+        [NOT_SPECIFIED_LABEL]
+      );
+
+      const genderDistribution = buildDistributionData(
+        residents,
+        (resident) => normalizeGenderLabel(resident.gender || resident.sex),
+        ["Male", "Female", NOT_SPECIFIED_LABEL]
+      );
+
+      drawPieChart(ageClassificationChart, ageDistribution, total);
+      drawPieChart(beneficiaryChart, beneficiaryDistribution, total);
+      drawPieChart(civilStatusChart, civilStatusDistribution, total);
+      drawPieChart(genderChart, genderDistribution, total);
+
+      renderChartLegend(ageClassificationLegend, ageDistribution);
+      renderChartLegend(beneficiaryLegend, beneficiaryDistribution);
+      renderChartLegend(civilStatusLegend, civilStatusDistribution);
+      renderChartLegend(genderLegend, genderDistribution);
+    };
+
+    const applyAgeAndClassification = () => {
+      const age = getAgeFromBirthDate(residentBirthInput.value);
+      if (age === null) {
+        residentAgeInput.value = "";
+        residentAgeClassificationInput.value = "";
+        return;
+      }
+      residentAgeInput.value = String(age);
+      residentAgeClassificationInput.value = getAgeClassificationFromAge(age);
+    };
+
+    const parseCoordinatesFromText = (text) => {
+      const matched = String(text || "").match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+      if (!matched) {
+        return null;
+      }
+
+      const lat = Number(matched[1]);
+      const lng = Number(matched[2]);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        return null;
+      }
+
+      return {
+        latitude: lat,
+        longitude: lng
+      };
+    };
+
+    const normalizeMapPoint = (point, fallbackZoom) => {
+      if (!point || point.latitude === undefined || point.longitude === undefined) {
+        return null;
+      }
+
+      const lat = Number(point.latitude);
+      const lng = Number(point.longitude);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        return null;
+      }
+
+      return {
+        latitude: lat,
+        longitude: lng,
+        zoom: Number(point.zoom) || fallbackZoom || DEFAULT_ZOOM
+      };
+    };
+
+    const buildAddressWithPinnedLocation = (addressText, latitude, longitude) => {
+      const pinText = "Pinned location near " + latitude + ", " + longitude;
+      const cleaned = String(addressText || "")
+        .replace(/Pinned location near\s*-?\d+\.\d+\s*,\s*-?\d+\.\d+/gi, "")
+        .replace(/\n{2,}/g, "\n")
+        .trim();
+
+      return cleaned ? (cleaned + "\n" + pinText) : pinText;
+    };
+
+    const updateResidentMetrics = (residents) => {
+      const residentList = Array.isArray(residents) ? residents : [];
+      const totalResidents = residentList.length;
+      const totalHouseholds = residentList.reduce((count, resident) => {
+        return count + (normalizeFamilyPosition(resident && resident.familyPosition) === "Family Leader" ? 1 : 0);
+      }, 0);
+
+      totalResidentsMetric.textContent = String(totalResidents);
+      totalHouseholdsMetric.textContent = String(totalHouseholds);
+    };
+
+    const readCurrentUser = () => {
+      try {
+        const raw = sessionStorage.getItem(CURRENT_USER_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (error) {
+        return null;
+      }
+    };
+
+    const normalizeThemePreference = (value) => (String(value || "").trim().toLowerCase() === "dark" ? "dark" : "system");
+
+    const getSystemPrefersDark = () => {
+      if (typeof window.matchMedia !== "function") {
+        return false;
+      }
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    };
+
+    const applyThemePreference = (preference) => {
+      const normalized = normalizeThemePreference(preference);
+      const useDarkMode = normalized === "dark" || (normalized === "system" && getSystemPrefersDark());
+      document.body.classList.toggle("dark-mode", useDarkMode);
+      return normalized;
+    };
+
+    const getSavedThemePreference = () => {
+      const currentUser = readCurrentUser();
+      const fromStorage = localStorage.getItem(THEME_PREFERENCE_KEY);
+      const fromUser = currentUser && currentUser.themePreference ? currentUser.themePreference : "";
+      return normalizeThemePreference(fromStorage || fromUser || "system");
+    };
+
+    const saveThemePreference = (preference) => {
+      const normalized = normalizeThemePreference(preference);
+      localStorage.setItem(THEME_PREFERENCE_KEY, normalized);
+      return normalized;
+    };
+
+    const persistThemePreferenceToCurrentUser = (preference) => {
+      const normalized = normalizeThemePreference(preference);
+      const currentUser = readCurrentUser();
+      if (currentUser) {
+        const updatedUser = {
+          ...currentUser,
+          themePreference: normalized
+        };
+        sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+      }
+
+      const accounts = readAccounts();
+      const currentEmail = String((currentUser && currentUser.email) || "").trim().toLowerCase();
+      if (!currentEmail || !accounts.length) {
+        return;
+      }
+
+      const accountIndex = accounts.findIndex(
+        (account) => String(account.email || "").trim().toLowerCase() === currentEmail
+      );
+      if (accountIndex < 0) {
+        return;
+      }
+
+      accounts[accountIndex] = {
+        ...accounts[accountIndex],
+        themePreference: normalized
+      };
+      saveAccounts(accounts);
+    };
+
+    const updateSettingsThemeButtonsState = (preference) => {
+      const normalized = normalizeThemePreference(preference);
+      settingsThemeSelect.value = normalized;
+    };
+
+    const closeSettingsThemeMenu = () => {
+      settingsThemeMenu.hidden = true;
+      settingsButton.setAttribute("aria-expanded", "false");
+    };
+
+    const openSettingsThemeMenu = () => {
+      const currentPreference = getSavedThemePreference();
+      updateSettingsThemeButtonsState(currentPreference);
+      settingsThemeMenu.hidden = false;
+      settingsButton.setAttribute("aria-expanded", "true");
+    };
+
+    const toggleSettingsThemeMenu = () => {
+      if (settingsThemeMenu.hidden) {
+        openSettingsThemeMenu();
+        return;
+      }
+      closeSettingsThemeMenu();
+    };
+
+    const applyThemeFromSettingsChoice = (preference) => {
+      const normalized = saveThemePreference(preference);
+      applyThemePreference(normalized);
+      persistThemePreferenceToCurrentUser(normalized);
+      accountEditThemeInput.value = normalized;
+      settingsThemeSelect.value = normalized;
+      updateSettingsThemeButtonsState(normalized);
+    };
+
+    const escapeSvgText = (text) =>
+      String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const getInitials = (text) => {
+      const parts = String(text || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      if (!parts.length) {
+        return "BR";
+      }
+      const first = parts[0].charAt(0);
+      const second = parts.length > 1 ? parts[1].charAt(0) : "";
+      return (first + second).toUpperCase();
+    };
+
+    const buildAvatarDataUrl = (label) => {
+      const initials = escapeSvgText(getInitials(label));
+      const svg =
+        "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'>" +
+        "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>" +
+        "<stop offset='0%' stop-color='#3e8ef0'/><stop offset='100%' stop-color='#56b7ff'/>" +
+        "</linearGradient></defs>" +
+        "<rect width='96' height='96' rx='48' fill='url(#g)'/>" +
+        "<text x='48' y='56' text-anchor='middle' font-size='34' font-family='Segoe UI, Arial, sans-serif' fill='#ffffff' font-weight='700'>" +
+        initials +
+        "</text></svg>";
+      return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+    };
+
+    const clampNumber = (value, min, max) => Math.min(max, Math.max(min, value));
+
+    const rgbToHsl = (red, green, blue) => {
+      const r = clampNumber(Number(red) / 255, 0, 1);
+      const g = clampNumber(Number(green) / 255, 0, 1);
+      const b = clampNumber(Number(blue) / 255, 0, 1);
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const delta = max - min;
+
+      let hue = 0;
+      if (delta !== 0) {
+        if (max === r) {
+          hue = ((g - b) / delta + (g < b ? 6 : 0)) * 60;
+        } else if (max === g) {
+          hue = (((b - r) / delta) + 2) * 60;
+        } else {
+          hue = (((r - g) / delta) + 4) * 60;
+        }
+      }
+
+      const lightness = (max + min) / 2;
+      const saturation =
+        delta === 0 ? 0 : delta / (1 - Math.abs((2 * lightness) - 1));
+
+      return {
+        h: (hue + 360) % 360,
+        s: saturation,
+        l: lightness
+      };
+    };
+
+    const buildThemePaletteFromHsl = (hue, saturation, lightness) => {
+      const h = Math.round((Number(hue) + 360) % 360);
+      const s = clampNumber(Math.round(Number(saturation) * 100), 28, 82);
+      const l = clampNumber(Math.round(Number(lightness) * 100), 20, 78);
+
+      const accent = "hsl(" + h + ", " + s + "%, " + clampNumber(l - 12, 26, 44) + "%)";
+      const muted = "hsl(" + h + ", " + clampNumber(Math.round(s * 0.55), 20, 55) + "%, " + clampNumber(l - 19, 18, 36) + "%)";
+      const bg = "hsl(" + h + ", " + clampNumber(Math.round(s * 0.25), 8, 28) + "%, " + clampNumber(l + 46, 78, 90) + "%)";
+      const line = "hsl(" + h + ", " + clampNumber(Math.round(s * 0.2), 8, 24) + "%, " + clampNumber(l + 50, 85, 95) + "%)";
+      const text = "hsl(" + h + ", " + clampNumber(Math.round(s * 0.45), 16, 44) + "%, 14%)";
+
+      return {
+        accent: accent,
+        muted: muted,
+        bg: bg,
+        line: line,
+        text: text
+      };
+    };
+
+    const applyThemePalette = (palette) => {
+      if (!palette) {
+        return;
+      }
+      const rootStyle = document.documentElement.style;
+      rootStyle.setProperty("--accent", palette.accent);
+      rootStyle.setProperty("--muted", palette.muted);
+      rootStyle.setProperty("--bg", palette.bg);
+      rootStyle.setProperty("--line", palette.line);
+      rootStyle.setProperty("--text", palette.text);
+    };
+
+    const getAverageLogoColor = (imageSource) =>
+      new Promise((resolve) => {
+        const source = String(imageSource || "").trim();
+        if (!source) {
+          resolve(null);
+          return;
+        }
+
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+            if (!context) {
+              resolve(null);
+              return;
+            }
+
+            const sampleSize = 48;
+            canvas.width = sampleSize;
+            canvas.height = sampleSize;
+            context.drawImage(image, 0, 0, sampleSize, sampleSize);
+            const pixels = context.getImageData(0, 0, sampleSize, sampleSize).data;
+
+            let totalWeight = 0;
+            let redTotal = 0;
+            let greenTotal = 0;
+            let blueTotal = 0;
+
+            for (let index = 0; index < pixels.length; index += 4) {
+              const red = pixels[index];
+              const green = pixels[index + 1];
+              const blue = pixels[index + 2];
+              const alpha = pixels[index + 3] / 255;
+              if (alpha < 0.2) {
+                continue;
+              }
+
+              const hsl = rgbToHsl(red, green, blue);
+              if (hsl.l < 0.08 || hsl.l > 0.96) {
+                continue;
+              }
+
+              const weight = alpha * (0.35 + hsl.s);
+              totalWeight += weight;
+              redTotal += red * weight;
+              greenTotal += green * weight;
+              blueTotal += blue * weight;
+            }
+
+            if (!totalWeight) {
+              resolve(null);
+              return;
+            }
+
+            resolve({
+              r: redTotal / totalWeight,
+              g: greenTotal / totalWeight,
+              b: blueTotal / totalWeight
+            });
+          } catch (error) {
+            resolve(null);
+          }
+        };
+        image.onerror = () => resolve(null);
+        image.src = source;
+      });
+
+    let activeThemeRequest = 0;
+    const applyThemeFromLogo = async (imageSource) => {
+      const requestId = activeThemeRequest + 1;
+      activeThemeRequest = requestId;
+
+      const averageColor = await getAverageLogoColor(imageSource);
+      if (activeThemeRequest !== requestId) {
+        return;
+      }
+
+      if (!averageColor) {
+        applyThemePalette(buildThemePaletteFromHsl(DEFAULT_THEME_HUE, 0.62, 0.43));
+        return;
+      }
+
+      const hsl = rgbToHsl(averageColor.r, averageColor.g, averageColor.b);
+      applyThemePalette(buildThemePaletteFromHsl(hsl.h, hsl.s, hsl.l));
+    };
+
+    const hydrateHeader = () => {
+      const currentUser = readCurrentUser();
+      const barangayName = currentUser && currentUser.barangayName
+        ? currentUser.barangayName
+        : "Barangay";
+      const adminEmail = currentUser && currentUser.email
+        ? currentUser.email
+        : "admin@barangay.gov.ph";
+      const photoSource =
+        (currentUser && currentUser.photoDataUrl) ||
+        (currentUser && currentUser.photoUrl) ||
+        buildAvatarDataUrl(barangayName);
+
+      dashboardTitle.textContent = (barangayName + " Residents Overview").toUpperCase();
+      adminEmailDisplay.textContent = adminEmail;
+      barangayPhoto.src = photoSource;
+      if (USE_LOGO_BASED_THEME) {
+        void applyThemeFromLogo(photoSource);
+      }
+    };
+
+    const setAccountEditStatus = (message, isError) => {
+      accountEditStatus.textContent = message;
+      accountEditStatus.style.color = isError ? "#b4232f" : "";
+    };
+
+    const closeAccountEditModal = () => {
+      accountEditOverlay.classList.remove("open");
+      accountEditOverlay.setAttribute("aria-hidden", "true");
+    };
+
+    const openAccountEditModal = () => {
+      const currentUser = readCurrentUser();
+      if (!currentUser) {
+        setFormMessage("No active admin session.", true);
+        return;
+      }
+
+      accountEditBarangayInput.value = currentUser.barangayName || "";
+      accountEditEmailInput.value = currentUser.email || "";
+      accountEditPasswordInput.value = "";
+      accountEditThemeInput.value = getSavedThemePreference();
+      accountEditAddressInput.value = currentUser.address || "";
+      selectedAccountMapPoint = normalizeMapPoint(currentUser.mapPoint, DEFAULT_ZOOM);
+      if (!selectedAccountMapPoint) {
+        const addressPoint = parseCoordinatesFromText(currentUser.address || "");
+        if (addressPoint) {
+          selectedAccountMapPoint = {
+            latitude: addressPoint.latitude,
+            longitude: addressPoint.longitude,
+            zoom: DEFAULT_ZOOM
+          };
+        }
+      }
+      selectedAccountPhoto = currentUser.photoDataUrl || currentUser.photoUrl || "";
+      accountEditPhotoInput.value = "";
+      accountEditPhotoName.textContent = selectedAccountPhoto ? "Current photo loaded." : "No photo selected.";
+      accountMapCoords.textContent = selectedAccountMapPoint
+        ? ("Pinned: " + selectedAccountMapPoint.latitude + ", " + selectedAccountMapPoint.longitude)
+        : "No location pinned yet.";
+      setAccountEditStatus("", false);
+      accountEditOverlay.classList.add("open");
+      accountEditOverlay.setAttribute("aria-hidden", "false");
+      accountEditEmailInput.focus();
+    };
+
+    const MAX_ACCOUNT_PHOTO_BYTES = 3 * 1024 * 1024;
+
+    const readImageFileAsDataUrl = (file) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Unable to read selected photo."));
+        reader.readAsDataURL(file);
+      });
+
+    const getAdminCenterPoint = () => {
+      const currentUser = readCurrentUser();
+      if (!currentUser) {
+        return null;
+      }
+
+      const point = normalizeMapPoint(currentUser.mapPoint, DEFAULT_ZOOM);
+      if (point) {
+        return [point.latitude, point.longitude];
+      }
+
+      const addressPoint = parseCoordinatesFromText(currentUser.address || "");
+      if (addressPoint) {
+        return [addressPoint.latitude, addressPoint.longitude];
+      }
+
+      return null;
+    };
+
+    const setAccountPinnedLocation = (latitude, longitude, zoom) => {
+      const lat = Number(latitude.toFixed(6));
+      const lng = Number(longitude.toFixed(6));
+      const zoomLevel = Number(zoom) || DEFAULT_ZOOM;
+      selectedAccountMapPoint = {
+        latitude: lat,
+        longitude: lng,
+        zoom: zoomLevel
+      };
+
+      if (accountMap) {
+        if (accountMapMarker) {
+          accountMapMarker.setLatLng([lat, lng]);
+        } else {
+          accountMapMarker = L.marker([lat, lng]).addTo(accountMap);
+        }
+        accountMap.setView([lat, lng], zoomLevel);
+      }
+
+      accountMapCoords.textContent = "Pinned: " + lat + ", " + lng;
+    };
+
+    const initializeAccountMap = () => {
+      if (accountMap) {
+        return;
+      }
+
+      accountMap = L.map(accountMapElement).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(accountMap);
+
+      accountMap.on("click", (event) => {
+        setAccountPinnedLocation(event.latlng.lat, event.latlng.lng, accountMap.getZoom());
+      });
+    };
+
+    const openAccountMapModal = () => {
+      initializeAccountMap();
+      accountMapOverlay.classList.add("open");
+      accountMapOverlay.setAttribute("aria-hidden", "false");
+
+      if (selectedAccountMapPoint) {
+        setAccountPinnedLocation(
+          selectedAccountMapPoint.latitude,
+          selectedAccountMapPoint.longitude,
+          selectedAccountMapPoint.zoom
+        );
+      } else {
+        const addressPoint = parseCoordinatesFromText(accountEditAddressInput.value);
+        if (addressPoint) {
+          setAccountPinnedLocation(addressPoint.latitude, addressPoint.longitude, DEFAULT_ZOOM);
+        } else {
+          if (accountMapMarker) {
+            accountMap.removeLayer(accountMapMarker);
+            accountMapMarker = null;
+          }
+          const adminCenter = getAdminCenterPoint() || DEFAULT_CENTER;
+          accountMap.setView(adminCenter, DEFAULT_ZOOM);
+          accountMapCoords.textContent = "No location pinned yet.";
+        }
+      }
+
+      setTimeout(() => {
+        accountMap.invalidateSize();
+      }, 0);
+    };
+
+    const closeAccountMapModal = () => {
+      accountMapOverlay.classList.remove("open");
+      accountMapOverlay.setAttribute("aria-hidden", "true");
+    };
+
+    const setResidentPinnedLocation = (latitude, longitude, zoom) => {
+      const lat = Number(latitude.toFixed(6));
+      const lng = Number(longitude.toFixed(6));
+      const zoomLevel = Number(zoom) || DEFAULT_ZOOM;
+      residentPinnedPoint = {
+        latitude: lat,
+        longitude: lng,
+        zoom: zoomLevel
+      };
+
+      if (residentMap) {
+        if (residentMarker) {
+          residentMarker.setLatLng([lat, lng]);
+        } else {
+          residentMarker = L.marker([lat, lng]).addTo(residentMap);
+        }
+        residentMap.setView([lat, lng], zoomLevel);
+      }
+
+      residentMapCoords.textContent = "Pinned: " + lat + ", " + lng;
+      residentMapLatitudeInput.value = String(lat);
+      residentMapLongitudeInput.value = String(lng);
+    };
+
+    const applyResidentManualCoordinates = () => {
+      const latValue = residentMapLatitudeInput.value.trim();
+      const lngValue = residentMapLongitudeInput.value.trim();
+      if (!latValue || !lngValue) {
+        residentMapCoords.textContent = "Enter both latitude and longitude.";
+        return;
+      }
+
+      const lat = Number(latValue);
+      const lng = Number(lngValue);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        residentMapCoords.textContent = "Coordinates must be valid numbers.";
+        return;
+      }
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        residentMapCoords.textContent = "Coordinates are out of valid range.";
+        return;
+      }
+
+      setResidentPinnedLocation(lat, lng, residentMap ? residentMap.getZoom() : DEFAULT_ZOOM);
+    };
+
+    const initializeResidentMap = () => {
+      if (residentMap) {
+        return;
+      }
+
+      residentMap = L.map(residentMapElement).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(residentMap);
+
+      residentMap.on("click", (event) => {
+        setResidentPinnedLocation(event.latlng.lat, event.latlng.lng, residentMap.getZoom());
+      });
+    };
+
+    const openResidentMapModal = () => {
+      initializeResidentMap();
+      residentMapOverlay.classList.add("open");
+      residentMapOverlay.setAttribute("aria-hidden", "false");
+
+      if (residentPinnedPoint) {
+        setResidentPinnedLocation(
+          residentPinnedPoint.latitude,
+          residentPinnedPoint.longitude,
+          residentPinnedPoint.zoom
+        );
+      } else {
+        const adminCenter = getAdminCenterPoint() || DEFAULT_CENTER;
+        residentMap.setView(adminCenter, DEFAULT_ZOOM);
+        residentMapCoords.textContent = "No location pinned yet.";
+        residentMapLatitudeInput.value = "";
+        residentMapLongitudeInput.value = "";
+      }
+
+      setTimeout(() => {
+        residentMap.invalidateSize();
+      }, 0);
+    };
+
+    const closeResidentMapModal = () => {
+      residentMapOverlay.classList.remove("open");
+      residentMapOverlay.setAttribute("aria-hidden", "true");
+    };
+
+    const parsePointFromResident = (resident) => {
+      if (resident && resident.mapPoint) {
+        const lat = Number(resident.mapPoint.latitude);
+        const lng = Number(resident.mapPoint.longitude);
+        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+          return {
+            latitude: lat,
+            longitude: lng,
+            zoom: Number(resident.mapPoint.zoom) || 17
+          };
+        }
+      }
+
+      const locationText = String((resident && resident.location) || "");
+      const matched = locationText.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+      if (matched) {
+        return {
+          latitude: Number(matched[1]),
+          longitude: Number(matched[2]),
+          zoom: 17
+        };
+      }
+
+      return null;
+    };
+
+    const closeResidentDetailModal = () => {
+      residentDetailOverlay.classList.remove("open");
+      residentDetailOverlay.setAttribute("aria-hidden", "true");
+    };
+
+    const resetResidentFormState = () => {
+      residentForm.reset();
+      residentLocationInput.value = "";
+      residentAgeInput.value = "";
+      residentAgeClassificationInput.value = "";
+      residentPinnedPoint = null;
+      activeResidentIndex = null;
+      editingResidentIndex = null;
+      saveResidentButton.textContent = "Save Resident";
+      cancelResidentEditButton.hidden = true;
+      void refreshFamilyLeaderFieldState();
+      residentMapCoords.textContent = "No location pinned yet.";
+      if (residentMap && residentMarker) {
+        residentMap.removeLayer(residentMarker);
+        residentMarker = null;
+      }
+    };
+
+    const startResidentEdit = async () => {
+      if (activeResidentIndex === null || activeResidentIndex === undefined) {
+        return;
+      }
+
+      let residents = [];
+      try {
+        residents = await readResidents();
+      } catch (error) {
+        setFormMessage("Unable to read resident database.", true);
+        return;
+      }
+
+      const resident = residents[activeResidentIndex];
+      if (!resident) {
+        setFormMessage("Selected resident was not found.", true);
+        return;
+      }
+
+      editingResidentIndex = activeResidentIndex;
+      const residentNameParts = getResidentNameParts(resident);
+      residentSurnameInput.value = residentNameParts.surname;
+      residentFirstNameInput.value = residentNameParts.firstName;
+      residentMiddleNameInput.value = residentNameParts.middleName;
+      residentSuffixInput.value = residentNameParts.suffix;
+      document.getElementById("residentGender").value = resident.gender || resident.sex || "";
+      residentBirthInput.value = resident.birthDate || "";
+      applyAgeAndClassification();
+      document.getElementById("residentCivilStatus").value = resident.civilStatus || "";
+      document.getElementById("residentBeneficiary").value = resident.beneficiary || "";
+      document.getElementById("residentContact").value = resident.contact || "";
+      residentNationalityInput.value = resident.nationality || "";
+      residentReligionInput.value = resident.religion || "";
+      document.getElementById("residentAddress").value = resident.address || "";
+      residentLocationInput.value = resident.location || "";
+      residentFamilyPositionInput.value = normalizeFamilyPosition(resident.familyPosition);
+      await refreshFamilyLeaderFieldState({
+        selectedValue: resident.familyLeaderName || resident.familyLeader || "",
+        selectedRelationship: resident.familyRelationship || resident.relationshipToFamilyLeader || ""
+      });
+
+      const point = parsePointFromResident(resident);
+      if (point) {
+        residentPinnedPoint = {
+          latitude: Number(point.latitude),
+          longitude: Number(point.longitude),
+          zoom: Number(point.zoom) || DEFAULT_ZOOM
+        };
+        residentMapCoords.textContent =
+          "Pinned: " + residentPinnedPoint.latitude + ", " + residentPinnedPoint.longitude;
+      } else {
+        residentPinnedPoint = null;
+        residentMapCoords.textContent = "No location pinned yet.";
+      }
+
+      saveResidentButton.textContent = "Update Resident";
+      cancelResidentEditButton.hidden = false;
+      setFormMessage("Editing resident #" + (activeResidentIndex + 1) + ".", false);
+      closeResidentDetailModal();
+      activateTab("add-resident");
+    };
+
+    const openResidentDetailModal = (resident, rowIndex) => {
+      activeResidentIndex = rowIndex;
+      const computedAge = resident.age !== undefined && resident.age !== null && resident.age !== ""
+        ? resident.age
+        : getAgeFromBirthDate(resident.birthDate);
+      const rawAgeClassification = resident.ageClassification
+        ? resident.ageClassification
+        : (resident.residencyStatus || getAgeClassificationFromAge(computedAge));
+      const computedAgeClassification = normalizeAgeClassification(rawAgeClassification);
+
+      const residentDisplayName = getResidentDisplayName(resident);
+      detailName.textContent = residentDisplayName || "-";
+      detailGender.textContent = resident.gender || resident.sex || "-";
+      detailCivilStatus.textContent = resident.civilStatus || "-";
+      detailBeneficiary.textContent = resident.beneficiary || "-";
+      detailBirthDate.textContent = resident.birthDate || "-";
+      detailAge.textContent = computedAge !== null && computedAge !== undefined && computedAge !== "" ? String(computedAge) : "-";
+      detailAgeClassification.textContent = computedAgeClassification || "-";
+      detailContact.textContent = resident.contact || "-";
+      detailNationality.textContent = resident.nationality || "-";
+      detailReligion.textContent = resident.religion || "-";
+      const familyPosition = normalizeFamilyPosition(resident.familyPosition);
+      const householdLeaderName =
+        familyPosition === "Family Leader"
+          ? residentDisplayName
+          : normalizeNamePart(resident.familyLeaderName);
+      let memberRows = [];
+      if (familyPosition === "Family Leader") {
+        memberRows = getFamilyMemberRowsByLeaderName(latestResidentsSnapshot, householdLeaderName);
+      } else if (familyPosition === "Family Member") {
+        const leaderRow = getFamilyLeaderRowForMember(latestResidentsSnapshot, resident);
+        const siblingRows = getFamilyMemberRowsByLeaderName(latestResidentsSnapshot, householdLeaderName, {
+          excludeName: residentDisplayName
+        });
+        if (leaderRow) {
+          memberRows.push(leaderRow);
+        }
+        memberRows = memberRows.concat(siblingRows);
+      }
+      detailFamilyMemberName.textContent = memberRows.length
+        ? memberRows.map((member) => member.name + " - " + member.relationship).join("\n")
+        : "-";
+      detailAddress.textContent = resident.address || "-";
+      detailLocation.textContent = resident.location || "-";
+      document.getElementById("residentDetailTitle").textContent =
+        "Resident Information #" + (rowIndex + 1);
+
+      const point = parsePointFromResident(resident);
+      if (point) {
+        if (!residentDetailMap) {
+          residentDetailMap = L.map(residentDetailMapElement).setView(
+            [point.latitude, point.longitude],
+            point.zoom || 17
+          );
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap contributors"
+          }).addTo(residentDetailMap);
+        }
+
+        if (residentDetailMarker) {
+          residentDetailMap.removeLayer(residentDetailMarker);
+        }
+        residentDetailMarker = L.marker([point.latitude, point.longitude]).addTo(residentDetailMap);
+        residentDetailMap.setView([point.latitude, point.longitude], point.zoom || 17);
+        residentDetailCoords.textContent = "Pinned location: " + point.latitude + ", " + point.longitude;
+      } else {
+        if (residentDetailMap && residentDetailMarker) {
+          residentDetailMap.removeLayer(residentDetailMarker);
+          residentDetailMarker = null;
+        }
+        residentDetailCoords.textContent = "No pinned location saved.";
+      }
+
+      residentDetailOverlay.classList.add("open");
+      residentDetailOverlay.setAttribute("aria-hidden", "false");
+      if (residentDetailMap) {
+        setTimeout(() => {
+          residentDetailMap.invalidateSize();
+        }, 0);
+      }
+    };
+
+    const initializeGisOverviewMap = () => {
+      if (gisOverviewMap) {
+        return;
+      }
+
+      gisOverviewMap = L.map(gisOverviewMapElement).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(gisOverviewMap);
+    };
+
+    const renderGisMapResidents = (residents) => {
+      initializeGisOverviewMap();
+
+      if (gisResidentMarkersLayer) {
+        gisOverviewMap.removeLayer(gisResidentMarkersLayer);
+      }
+      gisResidentMarkersLayer = L.layerGroup().addTo(gisOverviewMap);
+
+      const markerPoints = [];
+      const markerResidents = (residents || []).filter((resident) => {
+        const familyPosition = normalizeFamilyPosition(resident && resident.familyPosition);
+        if (familyPosition === "Family Leader") {
+          return true;
+        }
+        if (familyPosition !== "Family Member") {
+          return true;
+        }
+
+        const leaderName = normalizeNamePart(
+          (resident && (resident.familyLeaderName || resident.familyLeader)) || ""
+        );
+        if (!leaderName) {
+          return true;
+        }
+
+        return !findFamilyLeaderResidentByName(residents, leaderName, null);
+      });
+      markerResidents.forEach((resident, index) => {
+        const point = parsePointFromResident(resident);
+        if (!point) {
+          return;
+        }
+
+        const marker = L.marker([point.latitude, point.longitude]).addTo(gisResidentMarkersLayer);
+        marker.bindPopup(
+          "<strong>" + (getResidentDisplayName(resident) || "Resident") + "</strong><br>" +
+          (resident.address || "No address")
+        );
+        markerPoints.push([point.latitude, point.longitude]);
+      });
+
+      gisMapEmptyText.style.display = markerPoints.length ? "none" : "block";
+      if (!markerPoints.length) {
+        gisOverviewMap.setView(getAdminCenterPoint() || DEFAULT_CENTER, DEFAULT_ZOOM);
+        return;
+      }
+
+      const bounds = L.latLngBounds(markerPoints);
+      gisOverviewMap.fitBounds(bounds.pad(0.2));
+    };
+
+    const renderResidents = async () => {
+      let residents = [];
+      try {
+        residents = await readResidents();
+      } catch (error) {
+        residents = [];
+      }
+      residentTableBody.innerHTML = "";
+      const residentsWithIndex = residents
+        .map((resident, index) => ({ resident, index }))
+        .filter((item) => matchesResidentNameSearch(item.resident, residentNameSearchQuery))
+        .sort(compareResidentItemsBySurname);
+
+      residentsWithIndex.forEach((item) => {
+        const resident = item.resident;
+        const index = item.index;
+        const computedAge = resident.age !== undefined && resident.age !== null && resident.age !== ""
+          ? resident.age
+          : getAgeFromBirthDate(resident.birthDate);
+        const residentNameParts = getResidentNameParts(resident);
+
+        const row = document.createElement("tr");
+        row.innerHTML =
+          "<td>" + (residentNameParts.surname || "-") + "</td>" +
+          "<td>" + (residentNameParts.firstName || "-") + "</td>" +
+          "<td>" + (residentNameParts.middleName || "-") + "</td>" +
+          "<td>" + (residentNameParts.suffix || "-") + "</td>" +
+          "<td>" + (resident.gender || resident.sex || "-") + "</td>" +
+          "<td>" + (resident.birthDate || "-") + "</td>" +
+          "<td>" + (computedAge !== null && computedAge !== undefined && computedAge !== "" ? computedAge : "-") + "</td>" +
+          "<td>" + (resident.contact || "-") + "</td>" +
+          "<td>" + (resident.address || "-") + "</td>";
+        row.addEventListener("click", () => {
+          openResidentDetailModal(resident, index);
+        });
+        residentTableBody.appendChild(row);
+      });
+
+      if (!residents.length) {
+        residentEmptyText.textContent = "No residents yet. Add one from the Add Resident tab.";
+        residentEmptyText.style.display = "block";
+      } else if (!residentsWithIndex.length) {
+        residentEmptyText.textContent = "No residents match your search.";
+        residentEmptyText.style.display = "block";
+      } else {
+        residentEmptyText.style.display = "none";
+      }
+      latestResidentsSnapshot = residents;
+      updateResidentMetrics(residents);
+      renderGisMapResidents(residents);
+      renderReports(residents);
+    };
+
+    const activateTab = (target) => {
+      tabButtons.forEach((item) => item.classList.remove("active"));
+      sideTabButtons.forEach((item) => item.classList.remove("active"));
+      tabPanels.forEach((panel) => panel.classList.remove("active"));
+      const targetPanel = document.getElementById(target);
+      if (!targetPanel) {
+        return;
+      }
+
+      const matchedButtons = document.querySelectorAll('[data-tab="' + target + '"]');
+      if (!matchedButtons.length) {
+        return;
+      }
+      matchedButtons.forEach((button) => button.classList.add("active"));
+      targetPanel.classList.add("active");
+
+      if (target === "gis-map" && gisOverviewMap) {
+        setTimeout(() => {
+          gisOverviewMap.invalidateSize();
+        }, 0);
+      }
+      if (target === "reports") {
+        setTimeout(() => {
+          renderReports(latestResidentsSnapshot);
+        }, 0);
+      }
+    };
+
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const target = button.getAttribute("data-tab");
+        activateTab(target);
+      });
+    });
+
+    sideTabButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const target = button.getAttribute("data-tab");
+        activateTab(target);
+      });
+    });
+
+    residentSearchInput.addEventListener("input", () => {
+      residentNameSearchQuery = residentSearchInput.value.trim().toLowerCase();
+      renderResidents();
+    });
+
+    orgConvertButton.addEventListener("click", () => {
+      const structure = getOrgStructureFromInputs();
+      const hasAnyValue =
+        structure.punongBarangay ||
+        structure.punongBarangayPhoto ||
+        structure.skChairperson ||
+        structure.skChairpersonPhoto ||
+        structure.skMembers.some((name) => name) ||
+        structure.skMemberPhotos.some((photo) => photo) ||
+        structure.barangaySecretary ||
+        structure.barangaySecretaryPhoto ||
+        structure.barangayTreasurer ||
+        structure.barangayTreasurerPhoto ||
+        structure.sangguniangBarangay.some((name) => name) ||
+        structure.sangguniangBarangayPhotos.some((photo) => photo);
+
+      if (!hasAnyValue) {
+        setOrgStructureStatus("Please fill in at least one position before saving.", true);
+        return;
+      }
+
+      saveOrgStructure(structure);
+      renderOrgStructureChart(structure);
+      setOrgEditMode(false);
+      setOrgStructureStatus("Organizational chart saved and generated.", false);
+    });
+
+    orgEditButton.addEventListener("click", () => {
+      setOrgEditMode(true);
+      setOrgStructureStatus("Editing organizational structure.", false);
+    });
+
+    const setupOrgPhotoUploader = (input, button, noteElement, roleLabel, savePhoto, readPhoto) => {
+      if (button && input) {
+        button.addEventListener("click", () => {
+          input.click();
+        });
+      }
+
+      if (!input) {
+        return;
+      }
+
+      input.addEventListener("change", async () => {
+        const selectedFile = input.files && input.files[0];
+        if (!selectedFile) {
+          return;
+        }
+        if (!selectedFile.type.startsWith("image/")) {
+          input.value = "";
+          setOrgStructureStatus("Select a valid image file for " + roleLabel + ".", true);
+          return;
+        }
+        if (selectedFile.size > MAX_ACCOUNT_PHOTO_BYTES) {
+          input.value = "";
+          setOrgStructureStatus(roleLabel + " photo size must be 3MB or below.", true);
+          return;
+        }
+
+        try {
+          const imageData = await readImageFileAsDataUrl(selectedFile);
+          savePhoto(imageData);
+          updateOrgPhotoNote(noteElement, readPhoto(), selectedFile.name);
+          setOrgStructureStatus("", false);
+        } catch (error) {
+          input.value = "";
+          setOrgStructureStatus("Unable to read selected photo for " + roleLabel + ".", true);
+        }
+      });
+    };
+
+    setupOrgPhotoUploader(
+      orgPunongPhotoInput,
+      orgPunongPhotoPickButton,
+      orgPunongPhotoName,
+      "Punong Barangay",
+      (photo) => {
+        orgPunongBarangayPhoto = photo;
+      },
+      () => orgPunongBarangayPhoto
+    );
+
+    orgCouncilPhotoInputs.forEach((input, index) => {
+      setupOrgPhotoUploader(
+        input,
+        orgCouncilPhotoPickButtons[index],
+        orgCouncilPhotoNotes[index],
+        "Council member " + (index + 1),
+        (photo) => {
+          orgCouncilPhotos[index] = photo;
+        },
+        () => orgCouncilPhotos[index]
+      );
+    });
+
+    setupOrgPhotoUploader(
+      orgSkChairPhotoInput,
+      orgSkChairPhotoPickButton,
+      orgSkChairPhotoName,
+      "SK Chairperson",
+      (photo) => {
+        orgSkChairpersonPhoto = photo;
+      },
+      () => orgSkChairpersonPhoto
+    );
+
+    orgSkMemberPhotoInputs.forEach((input, index) => {
+      setupOrgPhotoUploader(
+        input,
+        orgSkMemberPhotoPickButtons[index],
+        orgSkMemberPhotoNotes[index],
+        "SK member " + (index + 1),
+        (photo) => {
+          orgSkMemberPhotos[index] = photo;
+        },
+        () => orgSkMemberPhotos[index]
+      );
+    });
+
+    setupOrgPhotoUploader(
+      orgSecretaryPhotoInput,
+      orgSecretaryPhotoPickButton,
+      orgSecretaryPhotoName,
+      "Barangay Secretary",
+      (photo) => {
+        orgBarangaySecretaryPhoto = photo;
+      },
+      () => orgBarangaySecretaryPhoto
+    );
+
+    setupOrgPhotoUploader(
+      orgTreasurerPhotoInput,
+      orgTreasurerPhotoPickButton,
+      orgTreasurerPhotoName,
+      "Barangay Treasurer",
+      (photo) => {
+        orgBarangayTreasurerPhoto = photo;
+      },
+      () => orgBarangayTreasurerPhoto
+    );
+
+    adminEmailDisplay.addEventListener("click", openAccountEditModal);
+    settingsButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleSettingsThemeMenu();
+    });
+    settingsThemeSelect.addEventListener("change", (event) => {
+      event.stopPropagation();
+      applyThemeFromSettingsChoice(settingsThemeSelect.value);
+      closeSettingsThemeMenu();
+    });
+    document.addEventListener("click", (event) => {
+      if (settingsThemeMenu.hidden) {
+        return;
+      }
+      if (event.target === settingsButton || settingsThemeMenu.contains(event.target)) {
+        return;
+      }
+      closeSettingsThemeMenu();
+    });
+    accountEditCloseButton.addEventListener("click", closeAccountEditModal);
+    accountEditCancelButton.addEventListener("click", closeAccountEditModal);
+    accountEditOverlay.addEventListener("click", (event) => {
+      if (event.target === accountEditOverlay) {
+        closeAccountEditModal();
+      }
+    });
+    accountEditMapButton.addEventListener("click", openAccountMapModal);
+    accountMapCloseButton.addEventListener("click", closeAccountMapModal);
+    accountMapCancelButton.addEventListener("click", closeAccountMapModal);
+    accountMapOverlay.addEventListener("click", (event) => {
+      if (event.target === accountMapOverlay) {
+        closeAccountMapModal();
+      }
+    });
+    accountMapResetButton.addEventListener("click", () => {
+      selectedAccountMapPoint = null;
+      accountMapCoords.textContent = "No location pinned yet.";
+      if (accountMap && accountMapMarker) {
+        accountMap.removeLayer(accountMapMarker);
+        accountMapMarker = null;
+      }
+    });
+    accountMapUseButton.addEventListener("click", () => {
+      if (!selectedAccountMapPoint) {
+        accountMapCoords.textContent = "Click map to pin location first.";
+        return;
+      }
+
+      accountEditAddressInput.value = buildAddressWithPinnedLocation(
+        accountEditAddressInput.value,
+        selectedAccountMapPoint.latitude,
+        selectedAccountMapPoint.longitude
+      );
+      setAccountEditStatus("Pinned location applied to address.", false);
+      closeAccountMapModal();
+    });
+
+    accountEditPhotoPickButton.addEventListener("click", () => {
+      accountEditPhotoInput.click();
+    });
+
+    accountEditPhotoClearButton.addEventListener("click", () => {
+      selectedAccountPhoto = "";
+      accountEditPhotoInput.value = "";
+      accountEditPhotoName.textContent = "No photo selected.";
+      setAccountEditStatus("", false);
+    });
+
+    accountEditPhotoInput.addEventListener("change", async () => {
+      const selectedFile = accountEditPhotoInput.files && accountEditPhotoInput.files[0];
+      if (!selectedFile) {
+        return;
+      }
+
+      if (!selectedFile.type.startsWith("image/")) {
+        accountEditPhotoInput.value = "";
+        setAccountEditStatus("Select a valid image file.", true);
+        return;
+      }
+
+      if (selectedFile.size > MAX_ACCOUNT_PHOTO_BYTES) {
+        accountEditPhotoInput.value = "";
+        setAccountEditStatus("Photo size must be 3MB or below.", true);
+        return;
+      }
+
+      try {
+        selectedAccountPhoto = await readImageFileAsDataUrl(selectedFile);
+        accountEditPhotoName.textContent = "Selected: " + selectedFile.name;
+        setAccountEditStatus("", false);
+      } catch (error) {
+        accountEditPhotoInput.value = "";
+        setAccountEditStatus("Unable to read selected photo.", true);
+      }
+    });
+
+    accountEditForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const currentUser = readCurrentUser();
+      if (!currentUser) {
+        setAccountEditStatus("No active admin session.", true);
+        return;
+      }
+
+      const typedBarangayName = accountEditBarangayInput.value.trim();
+      const typedEmail = accountEditEmailInput.value.trim();
+      const password = accountEditPasswordInput.value;
+      const themePreference = normalizeThemePreference(accountEditThemeInput.value);
+      const typedAddress = accountEditAddressInput.value.trim();
+      const barangayName = typedBarangayName || String(currentUser.barangayName || "").trim();
+      const email = typedEmail || String(currentUser.email || "").trim();
+      const emailLower = email.toLowerCase();
+      const address = typedAddress || String(currentUser.address || "").trim();
+
+      const selectedFile = accountEditPhotoInput.files && accountEditPhotoInput.files[0];
+      let photoSource = selectedAccountPhoto;
+      if (selectedFile) {
+        if (!selectedFile.type.startsWith("image/")) {
+          setAccountEditStatus("Select a valid image file.", true);
+          return;
+        }
+        if (selectedFile.size > MAX_ACCOUNT_PHOTO_BYTES) {
+          setAccountEditStatus("Photo size must be 3MB or below.", true);
+          return;
+        }
+        try {
+          photoSource = await readImageFileAsDataUrl(selectedFile);
+        } catch (error) {
+          setAccountEditStatus("Unable to read selected photo.", true);
+          return;
+        }
+      }
+
+      if (!email) {
+        setAccountEditStatus("Account email is missing. Please enter an email address.", true);
+        return;
+      }
+
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        setAccountEditStatus("Enter a valid email address.", true);
+        return;
+      }
+
+      if (password && password.length < 6) {
+        setAccountEditStatus("Password must be at least 6 characters.", true);
+        return;
+      }
+
+      const accounts = readAccounts();
+      const currentEmail = String(currentUser.email || "").trim().toLowerCase();
+      const accountIndex = accounts.findIndex(
+        (account) => String(account.email || "").trim().toLowerCase() === currentEmail
+      );
+
+      if (accountIndex < 0) {
+        setAccountEditStatus("Account record not found.", true);
+        return;
+      }
+
+      const emailExists = accounts.some(
+        (account, index) =>
+          index !== accountIndex &&
+          String(account.email || "").trim().toLowerCase() === emailLower
+      );
+      if (emailExists) {
+        setAccountEditStatus("Email is already used by another account.", true);
+        return;
+      }
+
+      const updatedAccount = {
+        ...accounts[accountIndex],
+        barangayName: barangayName,
+        email: email,
+        themePreference: themePreference,
+        address: address
+      };
+      if (password) {
+        updatedAccount.password = password;
+      }
+      if (selectedAccountMapPoint) {
+        updatedAccount.mapPoint = {
+          latitude: selectedAccountMapPoint.latitude,
+          longitude: selectedAccountMapPoint.longitude,
+          zoom: selectedAccountMapPoint.zoom || DEFAULT_ZOOM
+        };
+      }
+      if (photoSource) {
+        if (String(photoSource).startsWith("data:image/")) {
+          updatedAccount.photoDataUrl = photoSource;
+          delete updatedAccount.photoUrl;
+        } else {
+          updatedAccount.photoUrl = photoSource;
+          delete updatedAccount.photoDataUrl;
+        }
+      } else {
+        delete updatedAccount.photoUrl;
+        delete updatedAccount.photoDataUrl;
+      }
+
+      accounts[accountIndex] = updatedAccount;
+
+      try {
+        saveAccounts(accounts);
+      } catch (error) {
+        setAccountEditStatus("Unable to save account changes.", true);
+        return;
+      }
+
+      const updatedUser = {
+        email: updatedAccount.email || "",
+        barangayName: updatedAccount.barangayName || "",
+        address: updatedAccount.address || "",
+        mapPoint: updatedAccount.mapPoint || currentUser.mapPoint || null,
+        themePreference: updatedAccount.themePreference || "system",
+        photoUrl: updatedAccount.photoUrl || "",
+        photoDataUrl: updatedAccount.photoDataUrl || null
+      };
+      sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+      saveThemePreference(themePreference);
+      applyThemePreference(themePreference);
+      hydrateHeader();
+      closeAccountEditModal();
+      setFormMessage("Admin account updated successfully.", false);
+    });
+
+    pinAddressButton.addEventListener("click", () => {
+      if (normalizeFamilyPosition(residentFamilyPositionInput.value) === "Family Member") {
+        setFormMessage("Family Member location is linked to the selected family leader.", false);
+        return;
+      }
+      openResidentMapModal();
+    });
+
+    residentMapCloseButton.addEventListener("click", closeResidentMapModal);
+    residentMapCancelButton.addEventListener("click", closeResidentMapModal);
+    residentMapOverlay.addEventListener("click", (event) => {
+      if (event.target === residentMapOverlay) {
+        closeResidentMapModal();
+      }
+    });
+
+    residentMapResetButton.addEventListener("click", () => {
+      residentPinnedPoint = null;
+      residentMapCoords.textContent = "No location pinned yet.";
+      residentMapLatitudeInput.value = "";
+      residentMapLongitudeInput.value = "";
+      if (residentMap && residentMarker) {
+        residentMap.removeLayer(residentMarker);
+        residentMarker = null;
+      }
+    });
+
+    residentMapApplyCoordsButton.addEventListener("click", applyResidentManualCoordinates);
+    residentMapLatitudeInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyResidentManualCoordinates();
+      }
+    });
+    residentMapLongitudeInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyResidentManualCoordinates();
+      }
+    });
+
+    residentBirthInput.addEventListener("change", applyAgeAndClassification);
+    residentBirthInput.addEventListener("input", applyAgeAndClassification);
+    residentFamilyPositionInput.addEventListener("change", () => {
+      void refreshFamilyLeaderFieldState();
+    });
+    residentFamilyLeaderSearchInput.addEventListener("focus", () => {
+      if (normalizeFamilyPosition(residentFamilyPositionInput.value) === "Family Member") {
+        void refreshFamilyLeaderFieldState({ keepCurrentValue: true });
+      }
+    });
+    residentFamilyLeaderSearchInput.addEventListener("change", () => {
+      void syncFamilyMemberLocationWithLeader();
+    });
+    residentFamilyLeaderSearchInput.addEventListener("input", () => {
+      void syncFamilyMemberLocationWithLeader();
+    });
+    residentFamilyLeaderSearchInput.addEventListener("blur", () => {
+      void syncFamilyMemberLocationWithLeader();
+    });
+    cancelResidentEditButton.addEventListener("click", () => {
+      resetResidentFormState();
+      setFormMessage("Resident edit canceled.", false);
+    });
+
+    residentMapUseButton.addEventListener("click", () => {
+      if (!residentPinnedPoint) {
+        residentMapCoords.textContent = "Click map to pin location first.";
+        return;
+      }
+
+      residentLocationInput.value =
+        "Pinned location near " +
+        residentPinnedPoint.latitude +
+        ", " +
+        residentPinnedPoint.longitude;
+      closeResidentMapModal();
+    });
+
+    residentDetailCloseButton.addEventListener("click", closeResidentDetailModal);
+    residentDetailEditButton.addEventListener("click", startResidentEdit);
+    residentDetailDoneButton.addEventListener("click", closeResidentDetailModal);
+    residentDetailOverlay.addEventListener("click", (event) => {
+      if (event.target === residentDetailOverlay) {
+        closeResidentDetailModal();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeSettingsThemeMenu();
+        if (accountEditOverlay.classList.contains("open")) {
+          closeAccountEditModal();
+        }
+        if (residentDetailOverlay.classList.contains("open")) {
+          closeResidentDetailModal();
+        }
+        if (residentMapOverlay.classList.contains("open")) {
+          closeResidentMapModal();
+        }
+        if (accountMapOverlay.classList.contains("open")) {
+          closeAccountMapModal();
+        }
+      }
+    });
+
+    residentForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const surname = normalizeNamePart(residentSurnameInput.value);
+      const firstName = normalizeNamePart(residentFirstNameInput.value);
+      const middleName = normalizeNamePart(residentMiddleNameInput.value);
+      const suffix = normalizeNamePart(residentSuffixInput.value);
+      const name = composeResidentName({
+        surname: surname,
+        firstName: firstName,
+        middleName: middleName,
+        suffix: suffix
+      });
+      const gender = document.getElementById("residentGender").value;
+      const birthDate = document.getElementById("residentBirth").value;
+      const age = getAgeFromBirthDate(birthDate);
+      const ageClassification = getAgeClassificationFromAge(age);
+      const civilStatus = document.getElementById("residentCivilStatus").value;
+      const beneficiary = document.getElementById("residentBeneficiary").value;
+      const familyPosition = normalizeFamilyPosition(residentFamilyPositionInput.value);
+      const selectedRelationship = normalizeFamilyRelationship(residentFamilyRelationshipInput.value);
+      const contact = document.getElementById("residentContact").value.trim();
+      const nationality = residentNationalityInput.value.trim();
+      const religion = residentReligionInput.value.trim();
+      const address = document.getElementById("residentAddress").value.trim();
+      let location = document.getElementById("residentLocation").value.trim();
+
+      if (!surname || !firstName || !gender || !birthDate || age === null || !ageClassification || !civilStatus || !beneficiary || !address) {
+        setFormMessage("Please complete required fields: surname, first name, gender, birth date, age, age classification, civil status, beneficiary, and address.", true);
+        return;
+      }
+
+      if (familyPosition === "Family Leader" && !location) {
+        setFormMessage("Please pin location for the family leader.", true);
+        return;
+      }
+
+      let residents;
+      try {
+        residents = await readResidents();
+      } catch (error) {
+        setFormMessage("Unable to read resident database.", true);
+        return;
+      }
+
+      const isEditing =
+        editingResidentIndex !== null &&
+        editingResidentIndex >= 0 &&
+        editingResidentIndex < residents.length;
+      const leaderChoices = getFamilyLeaderChoices(residents, isEditing ? editingResidentIndex : null);
+      const familyLeaderInput = normalizeNamePart(residentFamilyLeaderSearchInput.value);
+      let familyLeaderName = "";
+      let familyRelationship = "";
+
+      if (familyPosition === "Family Member") {
+        if (!leaderChoices.length) {
+          setFormMessage("No saved family leader available. Add a Family Leader first.", true);
+          return;
+        }
+        if (!familyLeaderInput) {
+          setFormMessage("Please search and select a family leader for this family member.", true);
+          return;
+        }
+        const matchedLeader = leaderChoices.find(
+          (choice) => choice.toLowerCase() === familyLeaderInput.toLowerCase()
+        );
+        if (!matchedLeader) {
+          setFormMessage("Please select a family leader from the suggested list.", true);
+          return;
+        }
+        const selectedLeaderResident = findFamilyLeaderResidentByName(
+          residents,
+          matchedLeader,
+          isEditing ? editingResidentIndex : null
+        );
+        if (!selectedLeaderResident) {
+          setFormMessage("Selected family leader was not found. Please choose again.", true);
+          return;
+        }
+        const synced = applyFamilyMemberLocationFromLeader(selectedLeaderResident);
+        if (!synced) {
+          setFormMessage("Selected family leader has no saved location.", true);
+          return;
+        }
+        if (!selectedRelationship) {
+          setFormMessage("Please select relationship to family leader: Wife, Husband, or Child.", true);
+          return;
+        }
+        location = residentLocationInput.value.trim();
+        familyLeaderName = matchedLeader;
+        familyRelationship = selectedRelationship;
+      }
+
+      const payload = {
+        name: name,
+        surname: surname,
+        firstName: firstName,
+        middleName: middleName,
+        suffix: suffix,
+        gender: gender,
+        birthDate: birthDate,
+        age: age,
+        ageClassification: ageClassification,
+        civilStatus: civilStatus,
+        beneficiary: beneficiary,
+        familyPosition: familyPosition,
+        familyLeaderName: familyLeaderName,
+        familyRelationship: familyRelationship,
+        contact: contact,
+        nationality: nationality,
+        religion: religion,
+        address: address,
+        location: location,
+        mapPoint: residentPinnedPoint
+          ? {
+              latitude: residentPinnedPoint.latitude,
+              longitude: residentPinnedPoint.longitude,
+              zoom: residentPinnedPoint.zoom
+            }
+          : null
+      };
+
+      if (isEditing) {
+        const existingResident = residents[editingResidentIndex] || {};
+        residents[editingResidentIndex] = {
+          ...existingResident,
+          ...payload,
+          updatedAt: new Date().toISOString()
+        };
+      } else {
+        residents.push({
+          ...payload,
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      try {
+        await saveResidents(residents);
+      } catch (error) {
+        setFormMessage("Unable to save resident database.", true);
+        return;
+      }
+
+      resetResidentFormState();
+      setFormMessage(isEditing ? "Resident updated successfully." : "Resident saved successfully.", false);
+      await renderResidents();
+      activateTab("home");
+    });
+
+    const initialThemePreference = getSavedThemePreference();
+    applyThemePreference(initialThemePreference);
+    updateSettingsThemeButtonsState(initialThemePreference);
+    if (typeof window.matchMedia === "function") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const syncSystemTheme = () => {
+        if (getSavedThemePreference() === "system") {
+          applyThemePreference("system");
+        }
+      };
+      if (typeof mediaQuery.addEventListener === "function") {
+        mediaQuery.addEventListener("change", syncSystemTheme);
+      } else if (typeof mediaQuery.addListener === "function") {
+        mediaQuery.addListener(syncSystemTheme);
+      }
+    }
+
+    hydrateHeader();
+    initializeOrgStructure();
+    void refreshFamilyLeaderFieldState();
+    renderResidents();
+
+    document.getElementById("logoutButton").addEventListener("click", () => {
+      window.location.href = "login.html";
+    });
+  </script>
+</body>
+</html>

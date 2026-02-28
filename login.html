@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GIS Base Barangay Records | Sign In</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    :root {
+      --bg-top: #f7f8ff;
+      --bg-bottom: #e9edff;
+      --ink: #1f2340;
+      --ink-soft: #6f7698;
+      --line: rgba(124, 136, 201, 0.32);
+      --card: rgba(255, 255, 255, 0.78);
+      --card-edge: rgba(255, 255, 255, 0.9);
+      --accent: #3a93f2;
+      --accent-strong: #2b7fdd;
+      --accent-warm: #65c3ff;
+      --focus: rgba(58, 146, 242, 0.24);
+      --shadow-lg: 0 30px 60px rgba(42, 52, 126, 0.22);
+      --shadow-md: 0 12px 24px rgba(42, 52, 126, 0.16);
+      --radius-xl: 22px;
+      --radius-lg: 14px;
+      --login-shell-side-inset: 1in;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Poppins", "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(55rem 55rem at -10% -10%, rgba(58, 146, 242, 0.2) 8%, transparent 64%),
+        radial-gradient(45rem 45rem at 110% 120%, rgba(101, 195, 255, 0.22) 10%, transparent 62%),
+        linear-gradient(165deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      overflow: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      border-radius: 999px;
+      filter: blur(2px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::before {
+      width: 260px;
+      height: 260px;
+      background: linear-gradient(145deg, rgba(43, 127, 221, 0.24), rgba(58, 146, 242, 0.06));
+      top: 8%;
+      right: 7%;
+      animation: floatA 8s ease-in-out infinite;
+    }
+
+    body::after {
+      width: 220px;
+      height: 220px;
+      background: linear-gradient(145deg, rgba(101, 195, 255, 0.24), rgba(101, 195, 255, 0.06));
+      bottom: 10%;
+      left: 8%;
+      animation: floatB 9s ease-in-out infinite;
+    }
+
+    .auth-shell {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 890px);
+      border-radius: var(--radius-xl);
+      background: var(--card);
+      border: 1px solid var(--card-edge);
+      box-shadow: var(--shadow-lg);
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      animation: reveal 640ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+
+    .brand-side {
+      position: relative;
+      padding: 44px 38px;
+      background:
+        linear-gradient(165deg, rgba(58, 146, 242, 0.96), rgba(43, 127, 221, 0.95)),
+        linear-gradient(35deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+      color: #f6fffc;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      isolation: isolate;
+    }
+
+    .brand-logo {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      width: 70px;
+      height: 70px;
+      border-radius: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.34);
+      background: rgba(255, 255, 255, 0.16);
+      object-fit: cover;
+      box-shadow: 0 10px 20px rgba(17, 44, 92, 0.2);
+      z-index: 2;
+    }
+
+    .brand-side::after {
+      content: "";
+      position: absolute;
+      width: 230px;
+      height: 230px;
+      right: -85px;
+      top: 34%;
+      border-radius: 50%;
+      border: 30px solid rgba(255, 255, 255, 0.14);
+      z-index: -1;
+    }
+
+    .badge {
+      width: fit-content;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+    }
+
+    .brand-copy h1 {
+      margin: 14px 0 12px;
+      font-size: clamp(1.55rem, 3.2vw, 2.15rem);
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-copy p {
+      margin: 0;
+      color: rgba(246, 255, 252, 0.86);
+      line-height: 1.6;
+      font-size: 0.95rem;
+      max-width: 34ch;
+    }
+
+    .mini-stats {
+      margin-top: 28px;
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(30, 77, 128, 0.22);
+      font-size: 0.76rem;
+      letter-spacing: 0.02em;
+    }
+
+    .form-side {
+      background: rgba(255, 255, 255, 0.92);
+      padding: 44px 36px 34px;
+      display: grid;
+      align-content: center;
+      gap: 20px;
+    }
+
+    .form-head h2 {
+      margin: 0;
+      font-size: 1.7rem;
+      letter-spacing: -0.02em;
+    }
+
+    .form-head p {
+      margin: 8px 0 0;
+      color: var(--ink-soft);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    form {
+      display: grid;
+      gap: 14px;
+    }
+
+    .field {
+      position: relative;
+    }
+
+    .field label {
+      display: inline-block;
+      font-size: 0.79rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--ink-soft);
+      margin-bottom: 7px;
+    }
+
+    .input-wrap {
+      display: grid;
+      grid-template-columns: 18px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      transition: border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .input-wrap:focus-within {
+      border-color: rgba(58, 146, 242, 0.64);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      color: #5f7399;
+    }
+
+    input {
+      width: 100%;
+      border: 0;
+      padding: 0;
+      outline: none;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.94rem;
+    }
+
+    input::placeholder {
+      color: #9aaac4;
+    }
+
+    textarea {
+      width: 100%;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.94rem;
+      resize: vertical;
+      min-height: 58px;
+      max-height: 120px;
+    }
+
+    textarea::placeholder {
+      color: #9aaac4;
+    }
+
+    .toggle {
+      font: inherit;
+      border: 0;
+      background: transparent;
+      color: #4f6f9d;
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 0 2px;
+    }
+
+    .toggle:hover {
+      color: #355f96;
+    }
+
+    .utility {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 4px 0 2px;
+      font-size: 0.82rem;
+      color: #717490;
+    }
+
+    .remember {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .remember input {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--accent);
+    }
+
+    .link {
+      color: var(--accent-strong);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .link:hover {
+      text-decoration: underline;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-top: 3px;
+    }
+
+    .btn-login {
+      border: 0;
+      border-radius: var(--radius-lg);
+      padding: 12px 16px;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #f7fffd;
+      background: linear-gradient(120deg, var(--accent-strong), var(--accent));
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+      transition: transform 140ms ease, filter 140ms ease;
+    }
+
+    .btn-login:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+
+    .btn-create {
+      border: 1px solid rgba(58, 146, 242, 0.34);
+      border-radius: var(--radius-lg);
+      padding: 12px 14px;
+      font: inherit;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--accent-strong);
+      background: rgba(58, 146, 242, 0.08);
+      cursor: pointer;
+      transition: background 140ms ease, border-color 140ms ease;
+      white-space: nowrap;
+    }
+
+    .btn-create:hover {
+      background: rgba(58, 146, 242, 0.14);
+      border-color: rgba(58, 146, 242, 0.48);
+    }
+
+    .form-foot {
+      margin-top: 2px;
+      text-align: center;
+      color: #70738d;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    .status-message {
+      min-height: 1.25rem;
+      margin: 2px 0 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .status-message.error {
+      color: #b4232f;
+    }
+
+    .status-message.success {
+      color: #0f7a48;
+    }
+
+    .db-connect {
+      justify-self: start;
+      border: 1px dashed rgba(58, 146, 242, 0.5);
+      border-radius: 10px;
+      background: rgba(58, 146, 242, 0.08);
+      color: #2f77cb;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
+    .db-connect:hover {
+      background: rgba(58, 146, 242, 0.14);
+    }
+
+    .signup-overlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(33, 40, 87, 0.45);
+      -webkit-backdrop-filter: blur(5px);
+      backdrop-filter: blur(5px);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 180ms ease, visibility 180ms ease;
+      z-index: 20;
+    }
+
+    .signup-overlay.open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .signup-modal {
+      width: min(100%, 920px);
+      background: #f9fbff;
+      border: 1px solid rgba(58, 146, 242, 0.24);
+      border-radius: 16px;
+      box-shadow: 0 22px 48px rgba(35, 44, 98, 0.28);
+      padding: 20px 18px 18px;
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      transform: translateY(8px) scale(0.98);
+      transition: transform 180ms ease;
+    }
+
+    .signup-overlay.open .signup-modal {
+      transform: translateY(0) scale(1);
+    }
+
+    .signup-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .signup-title {
+      margin: 0;
+      font-size: 1.2rem;
+      letter-spacing: -0.01em;
+    }
+
+    .signup-subtitle {
+      margin: 6px 0 0;
+      font-size: 0.82rem;
+      color: #6e7490;
+      line-height: 1.45;
+    }
+
+    .signup-close {
+      border: 0;
+      background: transparent;
+      color: #5f739a;
+      font: inherit;
+      font-size: 1.45rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 2px 4px;
+    }
+
+    .signup-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .signup-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .signup-fields {
+      display: grid;
+      gap: 12px;
+    }
+
+    .signup-map-panel {
+      border: 1px solid rgba(142, 172, 216, 0.34);
+      border-radius: 12px;
+      background: #fffdfd;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .map-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.72rem;
+      color: #6f7ea0;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .map-reset {
+      border: 1px solid rgba(142, 172, 216, 0.38);
+      border-radius: 8px;
+      background: #f1f7ff;
+      color: #5279a8;
+      font: inherit;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+
+    .offline-map {
+      height: 250px;
+      border-radius: 10px;
+      border: 1px solid rgba(142, 172, 216, 0.34);
+      overflow: hidden;
+      background: #e8f1fb;
+    }
+
+    .offline-map:focus {
+      outline: 0;
+      box-shadow: 0 0 0 4px var(--focus);
+      border-color: rgba(58, 146, 242, 0.5);
+    }
+
+    .offline-map .leaflet-control-attribution {
+      font-size: 0.65rem;
+    }
+
+    .map-link {
+      justify-self: end;
+      font-size: 0.72rem;
+      color: #2f77cb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .map-link:hover {
+      text-decoration: underline;
+    }
+
+    .map-coords {
+      margin: 0;
+      font-size: 0.76rem;
+      color: #6e7490;
+      min-height: 1rem;
+    }
+
+    .map-hint {
+      margin: 0;
+      font-size: 0.73rem;
+      color: #717490;
+    }
+
+    .btn-ghost {
+      border: 1px solid rgba(142, 172, 216, 0.4);
+      border-radius: 11px;
+      padding: 10px 12px;
+      font: inherit;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #4f6f9d;
+      background: #ffffff;
+      cursor: pointer;
+    }
+
+    .btn-ghost:hover {
+      background: #eff6ff;
+    }
+
+    .btn-signup {
+      border: 0;
+      border-radius: 11px;
+      padding: 10px 12px;
+      font: inherit;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #f6fffc;
+      background: linear-gradient(120deg, var(--accent-strong), var(--accent));
+      cursor: pointer;
+    }
+
+    .btn-signup:hover {
+      filter: brightness(1.05);
+    }
+
+    /* Crypto-style UI pass */
+    body {
+      background:
+        radial-gradient(48rem 28rem at -8% -12%, rgba(124, 168, 245, 0.16) 6%, transparent 68%),
+        radial-gradient(44rem 24rem at 112% 112%, rgba(110, 195, 255, 0.16) 8%, transparent 70%),
+        linear-gradient(160deg, #edf2fa 0%, #e3ebf8 100%);
+      color: #263354;
+      padding: 20px;
+    }
+
+    body::before,
+    body::after {
+      filter: blur(1px);
+      opacity: 0.8;
+    }
+
+    .auth-shell {
+      width: min(100%, calc(1020px - (var(--login-shell-side-inset) * 2)));
+      border-radius: 14px;
+      background: #ffffff;
+      border: 1px solid #e2e9f6;
+      box-shadow: 0 16px 36px rgba(37, 63, 109, 0.12);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+
+    .brand-side {
+      padding: 104px 28px 28px;
+      background:
+        linear-gradient(165deg, rgba(70, 127, 243, 0.98), rgba(61, 112, 227, 0.96)),
+        linear-gradient(35deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    }
+
+    .brand-side::after {
+      width: 180px;
+      height: 180px;
+      right: -72px;
+      top: 38%;
+      border-width: 24px;
+    }
+
+    .brand-logo {
+      top: 14px;
+      left: 14px;
+      width: 70px;
+      height: 70px;
+      border-radius: 14px;
+    }
+
+    .badge {
+      font-size: 0.66rem;
+      padding: 7px 10px;
+      border-radius: 999px;
+    }
+
+    .brand-copy h1 {
+      font-size: clamp(1.35rem, 2.8vw, 1.85rem);
+      margin: 12px 0 10px;
+    }
+
+    .brand-copy p {
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    .pill {
+      border-radius: 999px;
+      font-size: 0.7rem;
+      padding: 6px 9px;
+      background: rgba(27, 66, 124, 0.34);
+    }
+
+    .form-side {
+      padding: 34px 28px 26px;
+      background: #ffffff;
+      gap: 16px;
+    }
+
+    .form-head h2 {
+      font-size: 1.45rem;
+    }
+
+    .form-head p {
+      font-size: 0.84rem;
+      color: #7484a2;
+    }
+
+    form {
+      gap: 12px;
+    }
+
+    .field label {
+      font-size: 0.74rem;
+      color: #7d8dab;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .input-wrap {
+      border-radius: 8px;
+      border: 1px solid #dde6f5;
+      background: #f8fbff;
+      padding: 10px 11px;
+    }
+
+    .input-wrap:focus-within {
+      border-color: rgba(70, 127, 243, 0.6);
+      box-shadow: 0 0 0 3px rgba(70, 127, 243, 0.16);
+    }
+
+    input,
+    textarea {
+      font-size: 0.88rem;
+      color: #31466e;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #9aaac4;
+      text-transform: none;
+    }
+
+    .toggle {
+      font-size: 0.68rem;
+      letter-spacing: 0.04em;
+      color: #5f7399;
+    }
+
+    .utility {
+      font-size: 0.76rem;
+      color: #7d8ca8;
+    }
+
+    .btn-row {
+      gap: 8px;
+    }
+
+    .btn-login,
+    .btn-signup {
+      border-radius: 8px;
+      padding: 10px 13px;
+      font-size: 0.8rem;
+      background: linear-gradient(130deg, #4f87ff 0%, #3f73eb 100%);
+      box-shadow: 0 8px 16px rgba(52, 92, 182, 0.24);
+    }
+
+    .btn-create,
+    .btn-ghost {
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.78rem;
+      border-color: #dbe5f5;
+      color: #5e7298;
+      background: #f7f9fe;
+    }
+
+    .btn-create:hover,
+    .btn-ghost:hover {
+      background: #eef4fd;
+      border-color: #cbdcf2;
+    }
+
+    .form-foot {
+      color: #8593ad;
+      font-size: 0.76rem;
+    }
+
+    .db-connect {
+      border-radius: 8px;
+      border: 1px dashed #a8c3eb;
+      background: #eef5ff;
+      color: #3e73b2;
+      font-size: 0.72rem;
+      padding: 7px 9px;
+    }
+
+    .signup-overlay {
+      background: rgba(34, 54, 96, 0.42);
+    }
+
+    .signup-modal {
+      background: #ffffff;
+      border: 1px solid #dfe8f7;
+      border-radius: 12px;
+      box-shadow: 0 18px 34px rgba(36, 63, 109, 0.24);
+      padding: 16px 14px 14px;
+    }
+
+    .signup-title {
+      font-size: 1.03rem;
+    }
+
+    .signup-subtitle {
+      color: #7f8ea9;
+      font-size: 0.76rem;
+    }
+
+    .signup-map-panel {
+      border-radius: 10px;
+      border: 1px solid #dee8f7;
+      background: #fbfdff;
+    }
+
+    .map-toolbar {
+      color: #7c8da8;
+      font-size: 0.68rem;
+    }
+
+    .map-reset {
+      border-radius: 7px;
+      border-color: #d7e3f6;
+      background: #f4f8ff;
+      color: #60749a;
+      font-size: 0.66rem;
+    }
+
+    .offline-map {
+      border-radius: 8px;
+      border-color: #dce6f5;
+      background: #eaf1fb;
+    }
+
+    .map-link {
+      color: #3f74bf;
+      font-size: 0.68rem;
+    }
+
+    .map-coords,
+    .map-hint {
+      color: #7f8ea9;
+      font-size: 0.72rem;
+    }
+
+    @keyframes reveal {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.985);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes floatA {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    @keyframes floatB {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(11px);
+      }
+    }
+
+    @media (max-width: 860px) {
+      .auth-shell {
+        grid-template-columns: 1fr;
+        max-width: 560px;
+      }
+
+      .brand-side {
+        padding: 90px 24px 24px;
+      }
+
+      .brand-logo {
+        top: 12px;
+        left: 12px;
+        width: 58px;
+        height: 58px;
+      }
+
+      .brand-copy p {
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 16px;
+      }
+
+      .form-side {
+        padding: 28px 20px 22px;
+      }
+
+      .btn-row {
+        grid-template-columns: 1fr;
+      }
+
+      .signup-actions {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .signup-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="auth-shell" aria-label="GIS Base Barangay Records Login">
+    <section class="brand-side">
+      <img id="brandPortalLogo" class="brand-logo" alt="Barangay logo" />
+      <div class="brand-copy">
+        <h1 id="brandPortalTitle">GIS Base Barangay Records</h1>
+        <p>Access residential records, monitor local data, and manage barangay information through one protected workspace.</p>
+        <div class="mini-stats">
+          <span class="pill">Records Mapping</span>
+          <span class="pill">Role-Based Access</span>
+          <span class="pill">Daily Backups</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-side">
+      <header class="form-head">
+        <h2>Welcome back</h2>
+        <p>Sign in to continue to your dashboard.</p>
+      </header>
+
+      <form id="authForm" novalidate>
+        <div class="field">
+          <label for="email">Email Address</label>
+          <div class="input-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 7.5C4 6.12 5.12 5 6.5 5h11C18.88 5 20 6.12 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M5.4 7.2l6.1 4.8a0.8 0.8 0 0 0 1 0l6.1-4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            <input id="email" name="email" type="email" placeholder="admin@barangay.gov.ph" required />
+            <span aria-hidden="true"></span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 11V8a5 5 0 1 1 10 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <rect x="4.5" y="11" width="15" height="9" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+            </svg>
+            <input id="password" name="password" type="password" placeholder="Enter your password" required />
+            <button type="button" class="toggle" id="togglePassword" aria-label="Show password">Show</button>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn-login" id="loginButton">Login to Dashboard</button>
+          <button type="button" class="btn-create" id="createAccountButton">Create Account</button>
+        </div>
+        <p id="authStatus" class="status-message" aria-live="polite"></p>
+      </form>
+
+      <p class="form-foot">Protected by secure authentication and session controls.</p>
+    </section>
+  </main>
+
+  <div class="signup-overlay" id="signupOverlay" aria-hidden="true">
+    <section class="signup-modal" role="dialog" aria-modal="true" aria-labelledby="signupTitle">
+      <div class="signup-head">
+        <div>
+          <h3 class="signup-title" id="signupTitle">Create Account</h3>
+          <p class="signup-subtitle">Enter Barangay Name, Email, Password, and Address or click the map.</p>
+        </div>
+        <button type="button" class="signup-close" id="signupCloseButton" aria-label="Close signup form">&times;</button>
+      </div>
+
+      <form id="signupForm" novalidate>
+        <div class="signup-grid">
+          <div class="signup-fields">
+            <div class="field">
+              <label for="signupBarangayName">Barangay Name</label>
+              <div class="input-wrap">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M4 19V9.5L12 5l8 4.5V19H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                  <path d="M9 19v-5h6v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+                <input id="signupBarangayName" name="signupBarangayName" type="text" placeholder="Enter barangay name" required />
+                <span aria-hidden="true"></span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="signupEmail">Email Address</label>
+              <div class="input-wrap">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M4 7.5C4 6.12 5.12 5 6.5 5h11C18.88 5 20 6.12 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" stroke="currentColor" stroke-width="1.7"/>
+                  <path d="M5.4 7.2l6.1 4.8a0.8 0.8 0 0 0 1 0l6.1-4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+                <input id="signupEmail" name="signupEmail" type="email" placeholder="you@example.com" required />
+                <span aria-hidden="true"></span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="signupPassword">Password</label>
+              <div class="input-wrap">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M7 11V8a5 5 0 1 1 10 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                  <rect x="4.5" y="11" width="15" height="9" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+                </svg>
+                <input id="signupPassword" name="signupPassword" type="password" placeholder="Minimum 6 characters" required />
+                <span aria-hidden="true"></span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="signupAddress">Address</label>
+              <div class="input-wrap">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11Z" stroke="currentColor" stroke-width="1.7"/>
+                  <circle cx="12" cy="10" r="2.3" stroke="currentColor" stroke-width="1.7"/>
+                </svg>
+                <textarea id="signupAddress" name="signupAddress" placeholder="Enter full address or click map"></textarea>
+                <span aria-hidden="true"></span>
+              </div>
+            </div>
+          </div>
+
+          <aside class="signup-map-panel" aria-label="Map picker">
+            <div class="map-toolbar">
+              <span>Online map</span>
+              <button type="button" class="map-reset" id="mapResetButton">Reset</button>
+            </div>
+            <div class="offline-map" id="offlineMap" aria-label="Map picker" tabindex="0"></div>
+            <p class="map-coords" id="mapCoords">No map location selected.</p>
+            <a class="map-link" href="#" id="openMapsMeLink" target="_blank" rel="noopener">Open in MAPS.ME</a>
+            <p class="map-hint">Click map to pin location.</p>
+          </aside>
+        </div>
+
+        <input type="hidden" id="signupLatitude" name="signupLatitude" />
+        <input type="hidden" id="signupLongitude" name="signupLongitude" />
+        <p id="signupStatus" class="status-message" aria-live="polite"></p>
+        <div class="signup-actions">
+          <button type="button" class="btn-ghost" id="signupCancelButton">Cancel</button>
+          <button type="submit" class="btn-signup">Sign Up</button>
+        </div>
+      </form>
+    </section>
+  </div>
+ 
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    const authForm = document.getElementById("authForm");
+    const brandPortalTitle = document.getElementById("brandPortalTitle");
+    const brandPortalLogo = document.getElementById("brandPortalLogo");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const togglePassword = document.getElementById("togglePassword");
+    const createAccountButton = document.getElementById("createAccountButton");
+    const authStatus = document.getElementById("authStatus");
+    const signupOverlay = document.getElementById("signupOverlay");
+    const signupForm = document.getElementById("signupForm");
+    const signupBarangayInput = document.getElementById("signupBarangayName");
+    const signupEmailInput = document.getElementById("signupEmail");
+    const signupPasswordInput = document.getElementById("signupPassword");
+    const signupAddressInput = document.getElementById("signupAddress");
+    const signupStatus = document.getElementById("signupStatus");
+    const signupCloseButton = document.getElementById("signupCloseButton");
+    const signupCancelButton = document.getElementById("signupCancelButton");
+    const offlineMap = document.getElementById("offlineMap");
+    const mapCoords = document.getElementById("mapCoords");
+    const mapResetButton = document.getElementById("mapResetButton");
+    const openMapsMeLink = document.getElementById("openMapsMeLink");
+    const signupLatitudeInput = document.getElementById("signupLatitude");
+    const signupLongitudeInput = document.getElementById("signupLongitude");
+    const ACCOUNTS_KEY = "gis_barangay_accounts";
+    const CURRENT_USER_KEY = "gis_current_user";
+    const DEFAULT_BRAND_PORTAL_TITLE = "GIS Base Barangay Records";
+    const BRAND_PORTAL_SUFFIX = "GIS BASED BARANGAY RECORS";
+    const DEFAULT_SIGNUP_CENTER = [12.167724, 124.430441];
+    const DEFAULT_SIGNUP_ZOOM = 16;
+    let selectedMapPoint = null;
+    let signupMap = null;
+    let signupMarker = null;
+
+    const readAccounts = async () => {
+      try {
+        const saved = localStorage.getItem(ACCOUNTS_KEY);
+        const parsed = saved ? JSON.parse(saved) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        return [];
+      }
+    };
+
+    const saveAccounts = async (accounts) => {
+      try {
+        localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+      } catch (error) {
+        throw new Error("Unable to save accounts.");
+      }
+    };
+
+    const normalizeBarangayName = (value) => String(value || "").trim();
+
+    const setBrandPortalTitle = (value) => {
+      if (!brandPortalTitle) {
+        return;
+      }
+      const cleaned = normalizeBarangayName(value);
+      const upperBarangayName = cleaned.toUpperCase();
+      brandPortalTitle.textContent = cleaned
+        ? (upperBarangayName + " " + BRAND_PORTAL_SUFFIX)
+        : DEFAULT_BRAND_PORTAL_TITLE;
+    };
+
+    const escapeSvgText = (text) =>
+      String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const getLogoInitials = (text) => {
+      const parts = String(text || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      if (!parts.length) {
+        return "BR";
+      }
+      const first = parts[0].charAt(0);
+      const second = parts.length > 1 ? parts[1].charAt(0) : "";
+      return (first + second).toUpperCase();
+    };
+
+    const buildDefaultBrandLogoDataUrl = (label) => {
+      const initials = escapeSvgText(getLogoInitials(label));
+      const svg =
+        "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'>" +
+        "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>" +
+        "<stop offset='0%' stop-color='#5ca8ff'/><stop offset='100%' stop-color='#3f73eb'/>" +
+        "</linearGradient></defs>" +
+        "<rect width='96' height='96' rx='18' fill='url(#g)'/>" +
+        "<text x='48' y='56' text-anchor='middle' font-size='32' font-family='Segoe UI, Arial, sans-serif' fill='#ffffff' font-weight='700'>" +
+        initials +
+        "</text></svg>";
+      return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+    };
+
+    const getLogoSourceFromRecord = (record) => {
+      if (!record || typeof record !== "object") {
+        return "";
+      }
+      const dataUrl = String(record.photoDataUrl || "").trim();
+      if (dataUrl) {
+        return dataUrl;
+      }
+      const url = String(record.photoUrl || "").trim();
+      if (url) {
+        return url;
+      }
+      return "";
+    };
+
+    const setBrandPortalLogo = (source, labelForFallback) => {
+      if (!brandPortalLogo) {
+        return;
+      }
+      const safeSource = String(source || "").trim();
+      if (safeSource) {
+        brandPortalLogo.src = safeSource;
+      } else {
+        brandPortalLogo.src = buildDefaultBrandLogoDataUrl(labelForFallback || DEFAULT_BRAND_PORTAL_TITLE);
+      }
+    };
+
+    const getBarangayNameFromCurrentSession = () => {
+      try {
+        const raw = sessionStorage.getItem(CURRENT_USER_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        return normalizeBarangayName(parsed && parsed.barangayName ? parsed.barangayName : "");
+      } catch (error) {
+        return "";
+      }
+    };
+
+    const getLatestBarangayNameFromAccounts = (accounts) => {
+      const list = Array.isArray(accounts) ? accounts : [];
+      for (let index = list.length - 1; index >= 0; index -= 1) {
+        const name = normalizeBarangayName(list[index] && list[index].barangayName);
+        if (name) {
+          return name;
+        }
+      }
+      return "";
+    };
+
+    const getLatestLogoSourceFromAccounts = (accounts) => {
+      const list = Array.isArray(accounts) ? accounts : [];
+      for (let index = list.length - 1; index >= 0; index -= 1) {
+        const source = getLogoSourceFromRecord(list[index]);
+        if (source) {
+          return source;
+        }
+      }
+      return "";
+    };
+
+    const hydrateBrandPortalTitle = async () => {
+      const sessionName = getBarangayNameFromCurrentSession();
+      const sessionUser = (() => {
+        try {
+          const raw = sessionStorage.getItem(CURRENT_USER_KEY);
+          return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+          return null;
+        }
+      })();
+      const sessionLogo = getLogoSourceFromRecord(sessionUser);
+
+      if (sessionName || sessionLogo) {
+        setBrandPortalTitle(sessionName);
+        setBrandPortalLogo(sessionLogo, sessionName);
+        return;
+      }
+
+      const accounts = await readAccounts();
+      const latestName = getLatestBarangayNameFromAccounts(accounts);
+      const latestLogo = getLatestLogoSourceFromAccounts(accounts);
+      setBrandPortalTitle(latestName);
+      setBrandPortalLogo(latestLogo, latestName);
+    };
+
+    const setMessage = (element, message, type) => {
+      const baseClass = "status-message";
+      element.textContent = message;
+      element.className = type ? baseClass + " " + type : baseClass;
+    };
+
+    const setStatus = (message, type) => {
+      setMessage(authStatus, message, type);
+    };
+
+    const setSignupStatus = (message, type) => {
+      setMessage(signupStatus, message, type);
+    };
+
+    const getCredentials = () => ({
+      email: emailInput.value.trim().toLowerCase(),
+      password: passwordInput.value
+    });
+
+    const validateCredentials = ({ email, password }, showMessage) => {
+      if (!email || !password) {
+        showMessage("Enter both email and password.", "error");
+        return false;
+      }
+
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        showMessage("Enter a valid email address.", "error");
+        return false;
+      }
+
+      if (password.length < 6) {
+        showMessage("Password must be at least 6 characters.", "error");
+        return false;
+      }
+
+      return true;
+    };
+
+    const resetMapSelection = () => {
+      selectedMapPoint = null;
+      signupLatitudeInput.value = "";
+      signupLongitudeInput.value = "";
+      mapCoords.textContent = "No map location selected.";
+      openMapsMeLink.href = "#";
+      if (signupMap && signupMarker) {
+        signupMap.removeLayer(signupMarker);
+        signupMarker = null;
+      }
+    };
+
+    const setPinnedLocation = (latitude, longitude, zoom, fillAddress) => {
+      const lat = Number(latitude.toFixed(6));
+      const lng = Number(longitude.toFixed(6));
+      selectedMapPoint = {
+        latitude: lat,
+        longitude: lng,
+        zoom: Number(zoom) || DEFAULT_SIGNUP_ZOOM
+      };
+      signupLatitudeInput.value = String(selectedMapPoint.latitude);
+      signupLongitudeInput.value = String(selectedMapPoint.longitude);
+      mapCoords.textContent = "Pinned location: " + selectedMapPoint.latitude + ", " + selectedMapPoint.longitude;
+      openMapsMeLink.href =
+        "https://maps.me/map?v=1&ll=" +
+        selectedMapPoint.latitude +
+        "," +
+        selectedMapPoint.longitude +
+        "&z=" +
+        selectedMapPoint.zoom;
+
+      if (signupMap) {
+        if (signupMarker) {
+          signupMarker.setLatLng([lat, lng]);
+        } else {
+          signupMarker = L.marker([lat, lng]).addTo(signupMap);
+        }
+      }
+
+      if (fillAddress && !signupAddressInput.value.trim()) {
+        signupAddressInput.value = "Pinned location near " + selectedMapPoint.latitude + ", " + selectedMapPoint.longitude;
+      }
+    };
+
+    const initializeSignupMap = () => {
+      if (signupMap) {
+        return;
+      }
+
+      signupMap = L.map(offlineMap).setView(DEFAULT_SIGNUP_CENTER, DEFAULT_SIGNUP_ZOOM);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(signupMap);
+
+      signupMap.on("click", (event) => {
+        const zoom = signupMap.getZoom();
+        setPinnedLocation(event.latlng.lat, event.latlng.lng, zoom, true);
+      });
+    };
+
+    const validateSignupData = (data) => {
+      if (!data.barangayName) {
+        setSignupStatus("Enter barangay name.", "error");
+        return false;
+      }
+
+      if (!data.email || !data.password) {
+        setSignupStatus("Enter both email and password.", "error");
+        return false;
+      }
+
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(data.email)) {
+        setSignupStatus("Enter a valid email address.", "error");
+        return false;
+      }
+
+      if (data.password.length < 6) {
+        setSignupStatus("Password must be at least 6 characters.", "error");
+        return false;
+      }
+
+      if (!data.address && !selectedMapPoint) {
+        setSignupStatus("Enter address or pin location on the map.", "error");
+        return false;
+      }
+
+      return true;
+    };
+
+    const openSignupModal = () => {
+      signupForm.reset();
+      signupPasswordInput.value = passwordInput.value;
+      setSignupStatus("", "");
+      resetMapSelection();
+      initializeSignupMap();
+      signupOverlay.classList.add("open");
+      signupOverlay.setAttribute("aria-hidden", "false");
+      signupMap.setView(DEFAULT_SIGNUP_CENTER, DEFAULT_SIGNUP_ZOOM);
+      setTimeout(() => {
+        signupMap.invalidateSize();
+      }, 0);
+      signupBarangayInput.focus();
+    };
+
+    const closeSignupModal = () => {
+      signupOverlay.classList.remove("open");
+      signupOverlay.setAttribute("aria-hidden", "true");
+    };
+
+    togglePassword.addEventListener("click", () => {
+      const hidden = passwordInput.type === "password";
+      passwordInput.type = hidden ? "text" : "password";
+      togglePassword.textContent = hidden ? "Hide" : "Show";
+      togglePassword.setAttribute("aria-label", hidden ? "Hide password" : "Show password");
+    });
+
+    createAccountButton.addEventListener("click", () => {
+      openSignupModal();
+    });
+
+    signupCloseButton.addEventListener("click", closeSignupModal);
+    signupCancelButton.addEventListener("click", closeSignupModal);
+    mapResetButton.addEventListener("click", () => {
+      resetMapSelection();
+      if (signupMap) {
+        signupMap.setView(DEFAULT_SIGNUP_CENTER, DEFAULT_SIGNUP_ZOOM);
+      }
+    });
+
+    openMapsMeLink.addEventListener("click", (event) => {
+      if (!selectedMapPoint) {
+        event.preventDefault();
+        setSignupStatus("Pin a location first before opening MAPS.ME.", "error");
+      }
+    });
+
+    signupOverlay.addEventListener("click", (event) => {
+      if (event.target === signupOverlay) {
+        closeSignupModal();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && signupOverlay.classList.contains("open")) {
+        closeSignupModal();
+      }
+    });
+
+    signupForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const signupData = {
+        barangayName: signupBarangayInput.value.trim(),
+        email: signupEmailInput.value.trim().toLowerCase(),
+        password: signupPasswordInput.value,
+        address: signupAddressInput.value.trim()
+      };
+
+      if (!validateSignupData(signupData)) {
+        return;
+      }
+
+      let accounts;
+      try {
+        accounts = await readAccounts();
+      } catch (error) {
+        setSignupStatus("Unable to read account database.", "error");
+        return;
+      }
+
+      const existing = accounts.find((account) => account.email === signupData.email);
+      if (existing) {
+        setSignupStatus("Account already exists for this email.", "error");
+        return;
+      }
+
+      const finalAddress = signupData.address || (
+        "Pinned location near " + selectedMapPoint.latitude + ", " + selectedMapPoint.longitude
+      );
+      accounts.push({
+        barangayName: signupData.barangayName,
+        email: signupData.email,
+        password: signupData.password,
+        address: finalAddress,
+        mapPoint: selectedMapPoint
+          ? {
+              latitude: selectedMapPoint.latitude,
+              longitude: selectedMapPoint.longitude,
+              zoom: selectedMapPoint.zoom
+            }
+          : null,
+        createdAt: new Date().toISOString()
+      });
+
+      try {
+        await saveAccounts(accounts);
+      } catch (error) {
+        setSignupStatus("Unable to save account database.", "error");
+        return;
+      }
+
+      emailInput.value = signupData.email;
+      passwordInput.value = signupData.password;
+      setBrandPortalTitle(signupData.barangayName);
+      setBrandPortalLogo("", signupData.barangayName);
+      closeSignupModal();
+      setStatus("Account created successfully. You can now log in.", "success");
+    });
+
+    authForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const credentials = getCredentials();
+      if (!validateCredentials(credentials, setStatus)) {
+        return;
+      }
+
+      let accounts;
+      try {
+        accounts = await readAccounts();
+      } catch (error) {
+        setStatus("Unable to read account database.", "error");
+        return;
+      }
+
+      const match = accounts.find(
+        (account) => account.email === credentials.email && account.password === credentials.password
+      );
+
+      if (!match) {
+        setStatus("Invalid login. Create an account first.", "error");
+        return;
+      }
+
+      sessionStorage.setItem("gis_current_user", JSON.stringify({
+        email: match.email || "",
+        barangayName: match.barangayName || "",
+        address: match.address || "",
+        mapPoint: match.mapPoint || null,
+        photoUrl: match.photoUrl || "",
+        photoDataUrl: match.photoDataUrl || null
+      }));
+      setStatus("Login successful.", "success");
+      window.location.href = "dashboard.html";
+    });
+
+    void hydrateBrandPortalTitle();
+  </script>
+</body>
+</html>
